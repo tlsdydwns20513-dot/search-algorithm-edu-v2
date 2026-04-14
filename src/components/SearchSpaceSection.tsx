@@ -79,6 +79,24 @@ export default function SearchSpaceSection({ onComplete }: SearchSpaceSectionPro
             선택된 노드: {selectedNode}
           </p>
         )}
+        {/* 트리 구조 현실 예시 */}
+        <div style={{ marginTop: '1rem' }}>
+          <div style={{ fontWeight: 'bold', color: '#555', marginBottom: '0.5rem' }}>트리 구조 현실 예시:</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <div style={{ background: '#e3f2fd', borderRadius: 8, padding: '0.6rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <span style={{ fontSize: '1.2rem' }}>🗂️</span>
+              <span><strong>파일 시스템:</strong> C드라이브 → 폴더 → 하위폴더 → 파일 (부모-자식 관계, 순환 없음)</span>
+            </div>
+            <div style={{ background: '#e8f5e9', borderRadius: 8, padding: '0.6rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <span style={{ fontSize: '1.2rem' }}>🏢</span>
+              <span><strong>조직도:</strong> 대표 → 부서장 → 팀장 → 팀원</span>
+            </div>
+            <div style={{ background: '#f3e5f5', borderRadius: 8, padding: '0.6rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <span style={{ fontSize: '1.2rem' }}>🎮</span>
+              <span><strong>게임 결정 트리:</strong> 현재 상태 → 가능한 수 → 다음 상태</span>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div className="content-card">
@@ -94,6 +112,24 @@ export default function SearchSpaceSection({ onComplete }: SearchSpaceSectionPro
             selectedNode={selectedNode}
             onNodeClick={setSelectedNode}
           />
+        </div>
+        {/* 그래프 구조 현실 예시 */}
+        <div style={{ marginTop: '1rem' }}>
+          <div style={{ fontWeight: 'bold', color: '#555', marginBottom: '0.5rem' }}>그래프 구조 현실 예시:</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <div style={{ background: '#fff3e0', borderRadius: 8, padding: '0.6rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <span style={{ fontSize: '1.2rem' }}>🗺️</span>
+              <span><strong>도로 지도:</strong> 도시(노드) ↔ 도로(간선), 순환 가능</span>
+            </div>
+            <div style={{ background: '#e3f2fd', borderRadius: 8, padding: '0.6rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <span style={{ fontSize: '1.2rem' }}>🌐</span>
+              <span><strong>인터넷:</strong> 웹페이지(노드) ↔ 링크(간선)</span>
+            </div>
+            <div style={{ background: '#fce4ec', borderRadius: 8, padding: '0.6rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <span style={{ fontSize: '1.2rem' }}>👥</span>
+              <span><strong>소셜 네트워크:</strong> 사람(노드) ↔ 친구 관계(간선)</span>
+            </div>
+          </div>
         </div>
       </div>
 
