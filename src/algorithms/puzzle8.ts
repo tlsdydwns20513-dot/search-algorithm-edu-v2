@@ -115,3 +115,20 @@ export function generateEasyPuzzle(): PuzzleBoard {
   }
   return board
 }
+
+/**
+ * 중급 8-퍼즐 생성: 목표 상태에서 8~12번 이동한 상태
+ */
+export function generateMediumPuzzle(): PuzzleBoard {
+  const goal: PuzzleBoard = [1, 2, 3, 4, 5, 6, 7, 8, 0]
+  let board = [...goal]
+  const moves = 8 + Math.floor(Math.random() * 5)  // 8~12번 랜덤 이동
+
+  for (let i = 0; i < moves; i++) {
+    const blankIdx = board.indexOf(0)
+    const adjacent = getAdjacentIndices(blankIdx)
+    const randomIdx = adjacent[Math.floor(Math.random() * adjacent.length)]
+    ;[board[blankIdx], board[randomIdx]] = [board[randomIdx], board[blankIdx]]
+  }
+  return board
+}
