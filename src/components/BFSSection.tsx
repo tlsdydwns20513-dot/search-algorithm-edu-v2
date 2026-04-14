@@ -77,13 +77,8 @@ export default function BFSSection({ onComplete }: BFSSectionProps) {
     }
   }, [])
 
-  const handlePrev = () => {
-    setCurrentStep(prev => Math.max(0, prev - 1))
-  }
-
-  const handleNext = () => {
-    setCurrentStep(prev => Math.min(steps.length - 1, prev + 1))
-  }
+  const handlePrev = () => setCurrentStep(prev => Math.max(0, prev - 1))
+  const handleNext = () => setCurrentStep(prev => Math.min(steps.length - 1, prev + 1))
 
   const handleTogglePlay = () => {
     if (isPlaying) {
@@ -106,12 +101,13 @@ export default function BFSSection({ onComplete }: BFSSectionProps) {
 
   const step = steps[currentStep]
   const isGoalReached = step?.status === 'goal'
+  // 전체 트리: 마지막 단계의 allNodes
+  const allNodes = steps.length > 0 ? steps[steps.length - 1].allNodes : []
 
   return (
     <div className="section">
       <h2 className="section-title">너비 우선 탐색 (BFS)</h2>
 
-      {/* 개념 설명 */}
       <div className="content-card">
         <h3>BFS란?</h3>
         <p>
@@ -130,6 +126,25 @@ export default function BFSSection({ onComplete }: BFSSectionProps) {
           강 건너기 문제를 BFS로 탐색하는 과정을 단계별로 확인하세요.
           BFS는 최단 이동 횟수로 목표에 도달하는 경로를 찾습니다.
         </p>
+
+        {/* BFS 특성 강조 배너 */}
+        <div style={{
+          background: 'linear-gradient(135deg, #e8f5e9, #e3f2fd)',
+          border: '1px solid #a5d6a7',
+          borderRadius: 8,
+          padding: '0.75rem 1rem',
+          marginBottom: '1rem',
+          fontSize: '0.9rem',
+          color: '#1b5e20',
+          fontWeight: 500,
+        }}>
+          🌊 <strong>BFS 특성:</strong> 같은 깊이(레벨)의 노드를 모두 탐색 후 다음 레벨로 이동합니다
+          {step && (
+            <span style={{ marginLeft: '1.5rem', color: '#1565c0' }}>
+              현재 레벨(깊이): <strong>{step.depth}</strong>
+            </span>
+          )}
+        </div>
 
         {isGoalReached && (
           <div style={{
@@ -151,15 +166,28 @@ export default function BFSSection({ onComplete }: BFSSectionProps) {
           <div style={{ textAlign: 'center', padding: '2rem', color: '#aaa' }}>계산 중...</div>
         ) : (
           <>
-            {/* 좌우 분할 레이아웃 */}
+            {/* 상단: 전체 탐색 트리 (항상 전체 표시, 레벨별 가로 배치) */}
+            <div style={{ marginBottom: '1rem' }}>
+              <div style={{ fontWeight: 700, color: '#667eea', marginBottom: '0.5rem', fontSize: '0.9rem' }}>
+                전체 탐색 트리 — 레벨별 가로 배치 (회색=미방문, 강조 테두리=현재 노드)
+              </div>
+              <TreeVisualizer
+                nodes={step.allNodes}
+                allNodes={allNodes}
+                currentNodeId={step.nodeId}
+                mode="bfs"
+                width={700}
+                height={340}
+              />
+            </div>
+
+            {/* 하단: StatePanel + 큐 */}
             <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
-              {/* 좌측 40%: StatePanel + 큐 */}
               <div style={{ flex: '0 0 38%', minWidth: 220 }}>
                 <div style={{ fontWeight: 700, color: '#667eea', marginBottom: '0.5rem', fontSize: '0.9rem' }}>
                   현재 상태 (깊이 {step.depth})
                 </div>
                 <StatePanel state={step.state} />
-
                 <div style={{
                   marginTop: '0.75rem',
                   padding: '0.6rem 0.9rem',
@@ -170,12 +198,13 @@ export default function BFSSection({ onComplete }: BFSSectionProps) {
                 }}>
                   <div><strong>노드 상태:</strong> {step.status}</div>
                   <div><strong>깊이:</strong> {step.depth}</div>
-                  <div><strong>탐색된 노드:</strong> {step.allNodes.length}개</div>
+                  <div><strong>탐색된 노드:</strong> {step.allNodes.length}개 / 전체 {allNodes.length}개</div>
                 </div>
+              </div>
 
-                {/* 큐 대기 목록 */}
+              {/* 큐 대기 목록 */}
+              <div style={{ flex: '1 1 55%', minWidth: 220 }}>
                 <div style={{
-                  marginTop: '0.75rem',
                   padding: '0.75rem',
                   background: '#e3f2fd',
                   borderRadius: 8,
@@ -186,20 +215,6 @@ export default function BFSSection({ onComplete }: BFSSectionProps) {
                   </div>
                   <QueuePreview states={step.queue ?? []} />
                 </div>
-              </div>
-
-              {/* 우측 60%: TreeVisualizer */}
-              <div style={{ flex: '1 1 55%', minWidth: 280 }}>
-                <div style={{ fontWeight: 700, color: '#667eea', marginBottom: '0.5rem', fontSize: '0.9rem' }}>
-                  탐색 트리
-                </div>
-                <TreeVisualizer
-                  nodes={step.allNodes}
-                  currentNodeId={step.nodeId}
-                  mode="bfs"
-                  width={500}
-                  height={320}
-                />
               </div>
             </div>
 
@@ -247,7 +262,6 @@ export default function BFSSection({ onComplete }: BFSSectionProps) {
         </div>
       </div>
 
-      {/* DFS vs BFS 비교 */}
       <div className="content-card">
         <h3>DFS vs BFS 비교</h3>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
