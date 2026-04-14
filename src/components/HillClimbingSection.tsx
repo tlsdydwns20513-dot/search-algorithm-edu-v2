@@ -40,7 +40,7 @@ export default function HillClimbingSection({ onComplete }: HillClimbingSectionP
   }, null)
 
   const handleTileClick = useCallback((tileIdx: number) => {
-    if (solved || localMin) return
+    if (solved) return  // solved 상태일 때만 클릭 비활성화
     if (!adjacentIndices.includes(tileIdx)) return
 
     const before = computeMisplaced(board)
@@ -55,7 +55,7 @@ export default function HillClimbingSection({ onComplete }: HillClimbingSectionP
     }])
     setBoard(newBoard)
     setMoveCount(c => c + 1)
-  }, [board, adjacentIndices, solved, localMin, moveCount])
+  }, [board, adjacentIndices, solved, moveCount])
 
   const handleReset = () => {
     setBoard(generateSolvablePuzzle())
@@ -66,6 +66,39 @@ export default function HillClimbingSection({ onComplete }: HillClimbingSectionP
   return (
     <div className="section">
       <h2 className="section-title">언덕 등반 탐색 게임 (Hill Climbing)</h2>
+
+      <div className="content-card">
+        <h3>언덕 등반 탐색이란?</h3>
+        <p>
+          산을 오를 때 항상 가장 높은 방향으로 한 걸음씩 이동하는 것처럼,
+          현재 상태에서 평가 함수(f) 값이 가장 좋아지는 방향으로만 이동하는 탐색 방법입니다.
+        </p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '1rem' }}>
+          <div style={{ background: '#e3f2fd', borderRadius: 8, padding: '0.75rem 1rem', borderLeft: '4px solid #1976d2' }}>
+            <div style={{ fontWeight: 'bold', color: '#1565c0', marginBottom: '0.3rem' }}>핵심 개념</div>
+            <ul style={{ margin: 0, paddingLeft: '1.2rem', color: '#555', lineHeight: 1.8 }}>
+              <li><strong>평가 함수:</strong> 현재 상태가 목표에 얼마나 가까운지 수치로 표현</li>
+              <li>이 게임에서는 <strong>"misplaced(잘못 놓인 타일 수)"</strong>가 평가 함수</li>
+              <li>misplaced가 낮을수록 목표에 가까운 상태</li>
+              <li>항상 misplaced가 줄어드는 방향으로만 이동</li>
+            </ul>
+          </div>
+          <div style={{ background: '#e8f5e9', borderRadius: 8, padding: '0.75rem 1rem', borderLeft: '4px solid #4caf50' }}>
+            <div style={{ fontWeight: 'bold', color: '#2e7d32', marginBottom: '0.3rem' }}>왜 "언덕 등반"인가?</div>
+            <p style={{ margin: 0, color: '#555', lineHeight: 1.7 }}>
+              misplaced를 뒤집으면 "올바른 위치의 타일 수"가 됩니다.
+              이 값을 최대화하는 방향으로 이동 = 언덕을 오르는 것!
+            </p>
+          </div>
+          <div style={{ background: '#fff3e0', borderRadius: 8, padding: '0.75rem 1rem', borderLeft: '4px solid #ff9800' }}>
+            <div style={{ fontWeight: 'bold', color: '#e65100', marginBottom: '0.3rem' }}>한계</div>
+            <p style={{ margin: 0, color: '#555', lineHeight: 1.7 }}>
+              극소(Local Minimum)에 빠지면 더 이상 개선이 안 됩니다.
+              전체 최적해가 아닌 지역 최적해에 갇힐 수 있습니다.
+            </p>
+          </div>
+        </div>
+      </div>
 
       <div className="content-card">
         <h3>게임 방법</h3>
@@ -96,7 +129,7 @@ export default function HillClimbingSection({ onComplete }: HillClimbingSectionP
                 const isAdjacent = adjacentIndices.includes(idx)
                 const isBest = idx === bestMoveIdx && !solved && !localMin
                 const previewVal = previews[idx]
-                const canMove = isAdjacent && !solved && !localMin
+                const canMove = isAdjacent && !solved  // localMin이어도 클릭 허용
 
                 return (
                   <div
