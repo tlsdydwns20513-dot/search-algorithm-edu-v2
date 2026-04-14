@@ -22,10 +22,11 @@ const GOAL: CityId = 'sinuiju'
 const START: CityId = 'busan'
 
 function initGame(): GameState {
+  const startNeighbors = getNeighbors(START)  // 부산의 인접 도시들
   return {
     current: START,
-    openList: [START],
-    closedList: [],
+    openList: startNeighbors,  // 인접 도시들이 처음부터 open
+    closedList: [START],       // 부산은 이미 방문
     path: [START],
     done: false,
     hint: '',
@@ -51,22 +52,12 @@ export default function BestFirstSection({ onComplete }: BestFirstSectionProps) 
 
   function handleCityClick(cityId: CityId) {
     if (game.done) return
-    // 클릭 가능한 노드: openList에 있고 현재 노드가 아닌 것
-    if (!game.openList.includes(cityId) || cityId === game.current) return
+    // 클릭 가능한 노드: openList에 있는 것
+    if (!game.openList.includes(cityId)) return
 
     const correct = isCorrectChoice(cityId, game.openList)
 
-    if (!correct) {
-      const best = getBestNextNode(game.openList)
-      const bestCity = best ? getCityById(best) : null
-      setGame(prev => ({
-        ...prev,
-        hint: `❌ 잘못된 선택입니다. 최상 우선 탐색은 h(n)이 가장 낮은 노드를 선택해야 합니다. 현재 Open List에서 최선은 "${bestCity?.name}"(h=${bestCity?.heuristic})입니다.`,
-      }))
-      return
-    }
-
-    // 올바른 선택: cityId를 closedList로, 인접 노드를 openList에 추가
+    // 올바른 선택: cityId로 이동, 인접 노드를 openList에 추가
     const neighbors = getNeighbors(cityId)
     const newClosed = [...game.closedList, game.current]
     const newOpen = game.openList
@@ -77,13 +68,28 @@ export default function BestFirstSection({ onComplete }: BestFirstSectionProps) 
 
     const done = cityId === GOAL
 
+    if (!correct) {
+      const best = getBestNextNode(game.openList)
+      const bestCity = best ? getCityById(best) : null
+      // 잘못된 선택도 이동은 허용하되 힌트 표시
+      setGame({
+        current: cityId,
+        openList: done ? [] : [cityId, ...newOpen.filter(id => id !== cityId)],
+        closedList: newClosed,
+        path: [...game.path, cityId],
+        done,
+        hint: done ? '' : `💡 힌트: 최상 우선 탐색은 h(n)이 가장 낮은 노드를 선택해야 합니다. 현재 Open List에서 최선은 "${bestCity?.name}"(h=${bestCity?.heuristic})입니다.`,
+      })
+      return
+    }
+
     setGame({
       current: cityId,
       openList: done ? [] : [cityId, ...newOpen.filter(id => id !== cityId)],
       closedList: newClosed,
       path: [...game.path, cityId],
       done,
-      hint: done ? '' : '',
+      hint: '',
     })
   }
 
@@ -102,6 +108,40 @@ export default function BestFirstSection({ onComplete }: BestFirstSectionProps) 
   return (
     <div className="section">
       <h2 className="section-title">최상 우선 탐색 게임 (Best-First Search)</h2>
+
+      <div className="content-card">
+        <h3>최상 우선 탐색이란?</h3>
+        <p>
+          여러 선택지 중에서 "목표에 가장 가까워 보이는" 것을 먼저 탐색하는 방법입니다.
+        </p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '1rem' }}>
+          <div style={{ background: '#e3f2fd', borderRadius: 8, padding: '0.75rem 1rem', borderLeft: '4px solid #1976d2' }}>
+            <div style={{ fontWeight: 'bold', color: '#1565c0', marginBottom: '0.3rem' }}>핵심 개념</div>
+            <ul style={{ margin: 0, paddingLeft: '1.2rem', color: '#555', lineHeight: 1.8 }}>
+              <li><strong>h(n):</strong> 현재 노드에서 목표까지의 예상 거리 (휴리스틱 값)</li>
+              <li><strong>Open List:</strong> 아직 탐색하지 않은 후보 노드들의 목록</li>
+              <li><strong>Closed List:</strong> 이미 탐색 완료된 노드들의 목록</li>
+              <li>매 단계마다 Open List에서 <strong>h(n)이 가장 낮은 노드</strong>를 선택</li>
+            </ul>
+          </div>
+          <div style={{ background: '#fff3e0', borderRadius: 8, padding: '0.75rem 1rem', borderLeft: '4px solid #ff9800' }}>
+            <div style={{ fontWeight: 'bold', color: '#e65100', marginBottom: '0.3rem' }}>언덕 등반과의 차이</div>
+            <p style={{ margin: 0, color: '#555', lineHeight: 1.7 }}>
+              언덕 등반은 현재 위치의 이웃만 보지만,
+              최상 우선 탐색은 Open List에 저장된 <strong>모든 후보 중 최선을 선택</strong>합니다.
+              한 번 지나친 경로도 나중에 다시 고려할 수 있습니다.
+            </p>
+          </div>
+          <div style={{ background: '#e8f5e9', borderRadius: 8, padding: '0.75rem 1rem', borderLeft: '4px solid #4caf50' }}>
+            <div style={{ fontWeight: 'bold', color: '#2e7d32', marginBottom: '0.3rem' }}>이 게임에서</div>
+            <p style={{ margin: 0, color: '#555', lineHeight: 1.7 }}>
+              부산(h=1100)에서 신의주(h=0)까지 이동합니다.
+              각 도시의 h값은 신의주까지의 직선 거리(km)입니다.
+              Open List에서 h값이 가장 낮은 도시를 클릭하세요!
+            </p>
+          </div>
+        </div>
+      </div>
 
       <div className="content-card">
         <h3>게임 방법</h3>
@@ -145,7 +185,7 @@ export default function BestFirstSection({ onComplete }: BestFirstSectionProps) 
               {CITIES.map(city => {
                 const status = getNodeStatus(city.id)
                 const color = nodeColors[status]
-                const isClickable = game.openList.includes(city.id) && city.id !== game.current && !game.done
+                const isClickable = game.openList.includes(city.id) && !game.done
                 return (
                   <g
                     key={city.id}
@@ -206,7 +246,7 @@ export default function BestFirstSection({ onComplete }: BestFirstSectionProps) 
                           borderRadius: 6,
                           background: isBest ? '#fff9c4' : '#fffde7',
                           border: isBest ? '2px solid #fbc02d' : '1px solid #ffe082',
-                          cursor: id !== game.current ? 'pointer' : 'default',
+                          cursor: 'pointer',
                           fontSize: '0.85rem',
                           fontWeight: isBest ? 'bold' : 'normal',
                         }}
