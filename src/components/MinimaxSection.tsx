@@ -86,7 +86,12 @@ function GonuBoardSVG({
           const scoreKey = `${r},${c}`
           const score = moveScores?.get(scoreKey)
           const isBestTarget = bestMove?.to.row === r && bestMove?.to.col === c
-          const targetColor = isBestTarget ? '#4caf50' : (score !== undefined && score > 0) ? '#f44336' : '#1976d2'
+          // 승률 계산
+          const winRate = score !== undefined
+            ? Math.max(0, Math.min(100, Math.round(((-score + 9) / 18) * 100)))
+            : undefined
+          const badgeColor = isBestTarget ? '#4caf50' : (winRate !== undefined && winRate > 50) ? '#1976d2' : '#f44336'
+          const targetColor = isBestTarget ? '#4caf50' : '#1976d2'
 
           return (
             <g key={`${r}-${c}`} onClick={() => !disabled && onCellClick({ row: r, col: c })} style={{ cursor: disabled ? 'default' : 'pointer' }}>
@@ -95,12 +100,12 @@ function GonuBoardSVG({
                 <>
                   <circle cx={cx} cy={cy} r={R + 14} fill="transparent" />
                   <circle cx={cx} cy={cy} r={R + 6} fill={isBestTarget ? 'rgba(76,175,80,0.15)' : 'none'} stroke={targetColor} strokeWidth="2.5" strokeDasharray="5,3" />
-                  {/* 점수 배지 */}
-                  {score !== undefined && (
+                  {/* 승률 배지 */}
+                  {winRate !== undefined && (
                     <g>
-                      <circle cx={cx + R + 2} cy={cy - R - 2} r={12} fill={isBestTarget ? '#4caf50' : score < 0 ? '#1976d2' : '#f44336'} />
-                      <text x={cx + R + 2} y={cy - R + 2} textAnchor="middle" fontSize="11" fill="white" fontWeight="bold" style={{ pointerEvents: 'none' }}>
-                        {score}
+                      <circle cx={cx + R + 2} cy={cy - R - 2} r={14} fill={badgeColor} />
+                      <text x={cx + R + 2} y={cy - R + 3} textAnchor="middle" fontSize="10" fill="white" fontWeight="bold" style={{ pointerEvents: 'none' }}>
+                        {winRate}%
                       </text>
                     </g>
                   )}
@@ -437,7 +442,7 @@ export default function MinimaxSection({ onComplete }: MinimaxSectionProps) {
                 선택한 말: <strong>({selectedPiecePos.row},{selectedPiecePos.col})</strong>
               </div>
               <div style={{ fontWeight: 'bold', marginBottom: '0.5rem', color: '#333', fontSize: '0.9rem' }}>
-                이동 가능한 위치와 점수:
+                이동 가능한 위치와 승률:
               </div>
               {validMoves.length === 0 ? (
                 <div style={{ color: '#f44336', fontSize: '0.85rem' }}>이동 가능한 위치가 없습니다.</div>
@@ -445,34 +450,42 @@ export default function MinimaxSection({ onComplete }: MinimaxSectionProps) {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
                   {validMoves.map(move => {
                     const key = `${move.to.row},${move.to.col}`
-                    const score = moveScores.get(key)
+                    const score = moveScores.get(key) ?? 0
                     const isBest = bestMove?.to.row === move.to.row && bestMove?.to.col === move.to.col
+                    // 점수가 낮을수록(플레이어 유리) 승률 높음
+                    const winRate = Math.max(0, Math.min(100, Math.round(((-score + 9) / 18) * 100)))
                     return (
                       <div
                         key={key}
                         style={{
-                          padding: '0.5rem 0.75rem',
+                          padding: '0.6rem 0.75rem',
                           borderRadius: 8,
                           background: isBest ? '#e8f5e9' : '#f5f5f5',
                           border: isBest ? '2px solid #4caf50' : '1px solid #e0e0e0',
-                          fontSize: '0.88rem',
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center',
+                          marginBottom: '0.4rem',
                         }}
                       >
-                        <span>
-                          → ({move.to.row},{move.to.col})
-                        </span>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                          <span style={{
-                            fontWeight: 'bold',
-                            color: isBest ? '#2e7d32' : score !== undefined && score > 0 ? '#c62828' : '#1565c0',
-                          }}>
-                            점수 {score !== undefined ? score : '?'}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.3rem' }}>
+                          <span style={{ fontSize: '0.88rem', fontWeight: isBest ? 'bold' : 'normal' }}>
+                            → ({move.to.row},{move.to.col}) {isBest ? '⭐ 추천' : ''}
                           </span>
-                          {isBest && <span style={{ color: '#4caf50', fontSize: '0.8rem' }}>⭐ 최선</span>}
-                        </span>
+                          <span style={{ fontSize: '0.88rem', fontWeight: 'bold', color: isBest ? '#2e7d32' : '#555' }}>
+                            {winRate}%
+                          </span>
+                        </div>
+                        {/* 승률 막대 */}
+                        <div style={{ background: '#e0e0e0', borderRadius: 4, height: 8, overflow: 'hidden' }}>
+                          <div style={{
+                            width: `${winRate}%`,
+                            height: '100%',
+                            background: isBest ? '#4caf50' : winRate > 50 ? '#1976d2' : '#f44336',
+                            borderRadius: 4,
+                            transition: 'width 0.3s ease',
+                          }} />
+                        </div>
+                        <div style={{ fontSize: '0.75rem', color: '#888', marginTop: '0.2rem' }}>
+                          미니맥스 점수: {score}
+                        </div>
                       </div>
                     )
                   })}
@@ -496,9 +509,9 @@ export default function MinimaxSection({ onComplete }: MinimaxSectionProps) {
           )}
 
           <div style={{ marginTop: '1rem', padding: '0.75rem', background: '#e3f2fd', borderRadius: 8, fontSize: '0.82rem', color: '#1565c0', lineHeight: 1.7 }}>
-            <strong>점수 해석</strong><br />
-            점수가 낮을수록 플레이어에게 유리합니다.<br />
-            (AI 이동 가능 수 − 플레이어 이동 가능 수)
+            <strong>승률 해석</strong><br />
+            승률이 높을수록 플레이어에게 유리한 이동입니다.<br />
+            초록 막대: 추천 이동 / 파란 막대: 유리 / 빨간 막대: 불리
           </div>
         </div>
       </div>
