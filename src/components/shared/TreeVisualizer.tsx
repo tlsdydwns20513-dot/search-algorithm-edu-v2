@@ -2,7 +2,8 @@ import { useMemo, useRef } from 'react'
 import { SearchTreeNode } from '../../types/index'
 
 interface TreeVisualizerProps {
-  nodes: SearchTreeNode[]
+  nodes: SearchTreeNode[]        // 현재까지 생성된 노드 (방문 상태 포함)
+  allNodes?: SearchTreeNode[]    // 전체 트리 노드 (미리 그리기용)
   currentNodeId: string
   mode: 'dfs' | 'bfs'
   width?: number
@@ -35,7 +36,6 @@ function buildLayout(nodes: SearchTreeNode[], mode: 'dfs' | 'bfs'): LayoutNode[]
   const nodeMap = new Map(nodes.map(n => [n.id, n]))
 
   if (mode === 'bfs') {
-    // 깊이별 레벨 레이아웃
     const byDepth = new Map<number, SearchTreeNode[]>()
     for (const n of nodes) {
       const arr = byDepth.get(n.depth) ?? []
@@ -58,7 +58,6 @@ function buildLayout(nodes: SearchTreeNode[], mode: 'dfs' | 'bfs'): LayoutNode[]
       })
     }
 
-    // 중앙 정렬: minX/maxX 기준으로 오프셋 적용
     if (layout.length > 0) {
       const xs = layout.map(l => l.x)
       const minX = Math.min(...xs)
@@ -69,7 +68,6 @@ function buildLayout(nodes: SearchTreeNode[], mode: 'dfs' | 'bfs'): LayoutNode[]
 
     return layout
   } else {
-    // DFS: 방문 순서 기반 레이아웃 (트리 구조 유지)
     const layout: LayoutNode[] = []
     let xCounter = 0
 
@@ -94,7 +92,6 @@ function buildLayout(nodes: SearchTreeNode[], mode: 'dfs' | 'bfs'): LayoutNode[]
     const root = nodes.find(n => n.parentId === null)
     if (root) dfsLayout(root.id, 0)
 
-    // 중앙 정렬: minX/maxX 기준으로 오프셋 적용
     if (layout.length > 0) {
       const xs = layout.map(l => l.x)
       const minX = Math.min(...xs)
@@ -107,16 +104,21 @@ function buildLayout(nodes: SearchTreeNode[], mode: 'dfs' | 'bfs'): LayoutNode[]
   }
 }
 
-export default function TreeVisualizer({ nodes, currentNodeId, mode, width = 700, height = 400 }: TreeVisualizerProps) {
+export default function TreeVisualizer({ nodes, allNodes, currentNodeId, mode, width = 700, height = 400 }: TreeVisualizerProps) {
   const containerRef = useRef<HTMLDivElement>(null)
 
-  const layout = useMemo(() => buildLayout(nodes, mode), [nodes, mode])
+  // allNodes가 있으면 전체 트리 레이아웃 기준으로 그리기
+  const baseNodes = allNodes ?? nodes
+  const layout = useMemo(() => buildLayout(baseNodes, mode), [baseNodes, mode])
 
   const posMap = useMemo(() => {
     const m = new Map<string, { x: number; y: number }>()
     for (const l of layout) m.set(l.id, { x: l.x, y: l.y })
     return m
   }, [layout])
+
+  // 현재까지 방문한 노드 맵 (status 정보 포함)
+  const visitedNodeMap = useMemo(() => new Map(nodes.map(n => [n.id, n])), [nodes])
 
   if (layout.length === 0) {
     return (
@@ -137,10 +139,7 @@ export default function TreeVisualizer({ nodes, currentNodeId, mode, width = 700
   const svgWidth = Math.max(contentWidth, width)
   const svgHeight = Math.max(maxY - minY, height)
 
-  // 루트가 SVG 중앙 상단에 오도록 중앙 정렬
   const offsetX = -minX + (svgWidth - contentWidth) / 2
-
-  const nodeMap = new Map(nodes.map(n => [n.id, n]))
 
   return (
     <div
@@ -149,12 +148,13 @@ export default function TreeVisualizer({ nodes, currentNodeId, mode, width = 700
     >
       <svg width={svgWidth} height={svgHeight} style={{ display: 'block' }}>
         <g transform={`translate(${offsetX}, ${-minY})`}>
-          {/* 엣지 */}
-          {nodes.map(n => {
+          {/* 엣지 - allNodes 기준으로 그리기 */}
+          {baseNodes.map(n => {
             if (!n.parentId) return null
             const from = posMap.get(n.parentId)
             const to = posMap.get(n.id)
             if (!from || !to) return null
+            const isVisited = visitedNodeMap.has(n.id)
             return (
               <line
                 key={`edge-${n.id}`}
@@ -162,26 +162,44 @@ export default function TreeVisualizer({ nodes, currentNodeId, mode, width = 700
                 y1={from.y}
                 x2={to.x}
                 y2={to.y}
-                stroke="#bbb"
-                strokeWidth={1.5}
+                stroke={isVisited ? '#bbb' : '#ddd'}
+                strokeWidth={isVisited ? 1.5 : 1}
+                strokeDasharray={isVisited ? undefined : '4,3'}
+                opacity={isVisited ? 1 : 0.5}
               />
             )
           })}
 
-          {/* 노드 */}
+          {/* 노드 - allNodes 기준으로 그리기, 방문 여부에 따라 색상 결정 */}
           {layout.map(({ id, x, y, node }) => {
             const isCurrent = id === currentNodeId
-            const color = STATUS_COLORS[node.status] ?? '#e0e0e0'
-            const textColor = node.status === 'unvisited' ? '#555' : '#fff'
+            const visitedNode = visitedNodeMap.get(id)
+            // allNodes 모드: 방문한 노드는 실제 status 색상, 미방문은 회색
+            const color = visitedNode
+              ? (STATUS_COLORS[visitedNode.status] ?? '#e0e0e0')
+              : '#e0e0e0'
+            const textColor = (!visitedNode || visitedNode.status === 'unvisited') ? '#555' : '#fff'
+            const opacity = visitedNode ? 1 : 0.45
 
             return (
-              <g key={id} transform={`translate(${x}, ${y})`}>
+              <g key={id} transform={`translate(${x}, ${y})`} opacity={opacity}>
                 <circle
                   r={NODE_RADIUS}
                   fill={color}
                   stroke={isCurrent ? '#333' : '#999'}
                   strokeWidth={isCurrent ? 3 : 1}
                 />
+                {/* 현재 노드 강조 링 */}
+                {isCurrent && (
+                  <circle
+                    r={NODE_RADIUS + 6}
+                    fill="none"
+                    stroke="#333"
+                    strokeWidth={2.5}
+                    strokeDasharray="5,3"
+                    opacity={1}
+                  />
+                )}
                 <text
                   textAnchor="middle"
                   dominantBaseline="middle"
@@ -191,7 +209,6 @@ export default function TreeVisualizer({ nodes, currentNodeId, mode, width = 700
                 >
                   {node.depth}
                 </text>
-                {/* action 텍스트 */}
                 <text
                   y={NODE_RADIUS + 12}
                   textAnchor="middle"
