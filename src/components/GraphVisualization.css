@@ -1,0 +1,62 @@
+.graph-svg {
+  background: white;
+  border-radius: 8px;
+}
+
+.edge {
+  stroke: #999;
+  stroke-width: 2;
+}
+
+.node {
+  fill: #e0e0e0;
+  stroke: #666;
+  stroke-width: 2;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.node:hover {
+  fill: #d0d0d0;
+  stroke: #333;
+}
+
+.node.visited {
+  fill: #bbdefb;
+  stroke: #1976d2;
+}
+
+.node.current {
+  fill: #ffd54f;
+  stroke: #f57c00;
+  stroke-width: 3;
+}
+
+.node.in-path {
+  fill: #81c784;
+  stroke: #388e3c;
+}
+
+.node.selected {
+  fill: #667eea;
+  stroke: #764ba2;
+  stroke-width: 3;
+}
+
+.node-label {
+  fill: #333;
+  font-size: 18px;
+  font-weight: bold;
+  pointer-events: none;
+}
+
+.node.current .node-label,
+.node.selected .node-label {
+  fill: white;
+}
+
+.node-info {
+  fill: #666;
+  font-size: 12px;
+  pointer-events: none;
+}
