@@ -18,14 +18,24 @@ export const INITIAL_GONU_BOARD: GonuBoard = [
  */
 export function generateRandomGonuBoard(): GonuBoard {
   const validLayouts: GonuBoard[] = [
-    // 기본 배치
+    // 기본 배치 (AI 상단, 플레이어 하단)
     [['ai','ai','ai'],['empty','empty','empty'],['player','player','player']],
     // 엇갈린 배치 1
     [['empty','ai','empty'],['ai','empty','ai'],['player','player','player']],
     // 엇갈린 배치 2
     [['ai','ai','ai'],['player','empty','player'],['empty','player','empty']],
+    // 대각 배치
+    [['ai','empty','ai'],['empty','ai','empty'],['player','player','player']],
+    // 중앙 집중 배치
+    [['ai','ai','ai'],['empty','empty','empty'],['player','empty','player']],
   ]
-  return validLayouts[Math.floor(Math.random() * validLayouts.length)]
+  // 양쪽 모두 이동 가능한 배치만 반환
+  const valid = validLayouts.filter(b => {
+    const pm = getValidMoves(b, 'player')
+    const am = getValidMoves(b, 'ai')
+    return pm.length > 0 && am.length > 0
+  })
+  return valid[Math.floor(Math.random() * valid.length)]
 }
 
 /**
