@@ -31,12 +31,16 @@ function GonuBoardSVG({
   validMoves,
   onCellClick,
   disabled,
+  moveScores,
+  bestMove,
 }: {
   board: GonuBoard
   selected: Position | null
   validMoves: GonuMove[]
   onCellClick: (pos: Position) => void
   disabled: boolean
+  moveScores?: Map<string, number>
+  bestMove?: GonuMove | null
 }) {
   const validTargets = new Set(validMoves.map(m => `${m.to.row},${m.to.col}`))
 
@@ -79,14 +83,27 @@ function GonuBoardSVG({
           const cy = PAD + r * CELL
           const isSelected = selected?.row === r && selected?.col === c
           const isTarget = validTargets.has(`${r},${c}`)
+          const scoreKey = `${r},${c}`
+          const score = moveScores?.get(scoreKey)
+          const isBestTarget = bestMove?.to.row === r && bestMove?.to.col === c
+          const targetColor = isBestTarget ? '#4caf50' : (score !== undefined && score > 0) ? '#f44336' : '#1976d2'
 
           return (
             <g key={`${r}-${c}`} onClick={() => !disabled && onCellClick({ row: r, col: c })} style={{ cursor: disabled ? 'default' : 'pointer' }}>
-          {/* 이동 가능 위치 클릭 영역 (투명 큰 원) */}
+              {/* 이동 가능 위치 클릭 영역 (투명 큰 원) */}
               {isTarget && (
                 <>
                   <circle cx={cx} cy={cy} r={R + 14} fill="transparent" />
-                  <circle cx={cx} cy={cy} r={R + 6} fill="none" stroke="#4caf50" strokeWidth="2.5" strokeDasharray="5,3" />
+                  <circle cx={cx} cy={cy} r={R + 6} fill={isBestTarget ? 'rgba(76,175,80,0.15)' : 'none'} stroke={targetColor} strokeWidth="2.5" strokeDasharray="5,3" />
+                  {/* 점수 배지 */}
+                  {score !== undefined && (
+                    <g>
+                      <circle cx={cx + R + 2} cy={cy - R - 2} r={12} fill={isBestTarget ? '#4caf50' : score < 0 ? '#1976d2' : '#f44336'} />
+                      <text x={cx + R + 2} y={cy - R + 2} textAnchor="middle" fontSize="11" fill="white" fontWeight="bold" style={{ pointerEvents: 'none' }}>
+                        {score}
+                      </text>
+                    </g>
+                  )}
                 </>
               )}
               {/* 말 */}
@@ -211,6 +228,9 @@ export default function MinimaxSection({ onComplete }: MinimaxSectionProps) {
   const [winner, setWinner] = useState<'player' | 'ai' | null>(null)
   const [statusMsg, setStatusMsg] = useState('당신의 차례입니다. 말을 선택하세요.')
   const [aiThinking, setAiThinking] = useState(false)
+  const [moveScores, setMoveScores] = useState<Map<string, number>>(new Map())
+  const [bestMove, setBestMove] = useState<GonuMove | null>(null)
+  const [selectedPiecePos, setSelectedPiecePos] = useState<Position | null>(null)
 
   // 게임 종료 체크
   const checkTerminal = useCallback((b: GonuBoard): 'player' | 'ai' | null => {
@@ -266,6 +286,9 @@ export default function MinimaxSection({ onComplete }: MinimaxSectionProps) {
       setBoard(newBoard)
       setSelected(null)
       setValidMoves([])
+      setMoveScores(new Map())
+      setBestMove(null)
+      setSelectedPiecePos(null)
 
       const w = checkTerminal(newBoard)
       if (w) {
@@ -285,6 +308,24 @@ export default function MinimaxSection({ onComplete }: MinimaxSectionProps) {
       setSelected(pos)
       const moves = getValidMoves(board, 'player').filter(m => m.from.row === pos.row && m.from.col === pos.col)
       setValidMoves(moves)
+      setSelectedPiecePos(pos)
+
+      // 각 이동에 대해 미니맥스 점수 계산 (depth=2, AI 차례로 평가)
+      const scores = new Map<string, number>()
+      let bestScore = Infinity
+      let best: GonuMove | null = null
+      for (const move of moves) {
+        const newBoard = applyGonuMove(board, move)
+        const result = minimax(newBoard, 2, true)
+        const key = `${move.to.row},${move.to.col}`
+        scores.set(key, result.score)
+        if (result.score < bestScore) {
+          bestScore = result.score
+          best = move
+        }
+      }
+      setMoveScores(scores)
+      setBestMove(best)
       setStatusMsg(moves.length > 0 ? '이동할 위치를 선택하세요.' : '이 말은 이동할 수 없습니다.')
       return
     }
@@ -292,6 +333,9 @@ export default function MinimaxSection({ onComplete }: MinimaxSectionProps) {
     // 다른 곳 클릭 → 선택 해제
     setSelected(null)
     setValidMoves([])
+    setMoveScores(new Map())
+    setBestMove(null)
+    setSelectedPiecePos(null)
     setStatusMsg('당신의 차례입니다. 말을 선택하세요.')
   }, [turn, phase, aiThinking, board, validMoves, checkTerminal, doAiMove])
 
@@ -306,6 +350,9 @@ export default function MinimaxSection({ onComplete }: MinimaxSectionProps) {
     setPhase('playing')
     setStatusMsg('당신의 차례입니다. 말을 선택하세요.')
     setAiThinking(false)
+    setMoveScores(new Map())
+    setBestMove(null)
+    setSelectedPiecePos(null)
   }
 
   const handleStart = () => {
@@ -357,6 +404,8 @@ export default function MinimaxSection({ onComplete }: MinimaxSectionProps) {
             validMoves={validMoves}
             onCellClick={handleCellClick}
             disabled={turn !== 'player' || phase !== 'playing' || aiThinking}
+            moveScores={moveScores}
+            bestMove={bestMove}
           />
 
           <div className="controls" style={{ marginTop: '1rem' }}>
@@ -367,24 +416,89 @@ export default function MinimaxSection({ onComplete }: MinimaxSectionProps) {
           </div>
         </div>
 
-        {/* 우측: 게임 트리 */}
+        {/* 우측: 미니맥스 분석 패널 */}
         <div className="content-card" style={{ flex: '1 1 300px', minWidth: 280 }}>
-          <h3>게임 트리 (depth=3)</h3>
-          {gameTree ? (
-            <div style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: 420 }}>
-              <div style={{ display: 'flex', justifyContent: 'center', padding: '0.5rem' }}>
-                <GameTreeView node={gameTree} />
-              </div>
+          <h3>🧠 미니맥스 분석</h3>
+
+          {aiThinking ? (
+            <div style={{ color: '#999', textAlign: 'center', padding: '2rem' }}>
+              <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>🤖</div>
+              AI가 계산 중...
+            </div>
+          ) : selectedPiecePos === null ? (
+            <div style={{ color: '#666', padding: '1rem', background: '#f5f5f5', borderRadius: 8, lineHeight: 1.7 }}>
+              <div style={{ fontWeight: 'bold', marginBottom: '0.5rem', color: '#1976d2' }}>사용 방법</div>
+              파란 말을 클릭하세요.<br />
+              각 이동의 미니맥스 점수를 분석해드립니다.
             </div>
           ) : (
-            <div style={{ color: '#999', textAlign: 'center', padding: '2rem' }}>
-              AI가 이동하면 게임 트리가 표시됩니다.
+            <div>
+              <div style={{ marginBottom: '0.75rem', fontSize: '0.9rem', color: '#555' }}>
+                선택한 말: <strong>({selectedPiecePos.row},{selectedPiecePos.col})</strong>
+              </div>
+              <div style={{ fontWeight: 'bold', marginBottom: '0.5rem', color: '#333', fontSize: '0.9rem' }}>
+                이동 가능한 위치와 점수:
+              </div>
+              {validMoves.length === 0 ? (
+                <div style={{ color: '#f44336', fontSize: '0.85rem' }}>이동 가능한 위치가 없습니다.</div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                  {validMoves.map(move => {
+                    const key = `${move.to.row},${move.to.col}`
+                    const score = moveScores.get(key)
+                    const isBest = bestMove?.to.row === move.to.row && bestMove?.to.col === move.to.col
+                    return (
+                      <div
+                        key={key}
+                        style={{
+                          padding: '0.5rem 0.75rem',
+                          borderRadius: 8,
+                          background: isBest ? '#e8f5e9' : '#f5f5f5',
+                          border: isBest ? '2px solid #4caf50' : '1px solid #e0e0e0',
+                          fontSize: '0.88rem',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                        }}
+                      >
+                        <span>
+                          → ({move.to.row},{move.to.col})
+                        </span>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                          <span style={{
+                            fontWeight: 'bold',
+                            color: isBest ? '#2e7d32' : score !== undefined && score > 0 ? '#c62828' : '#1565c0',
+                          }}>
+                            점수 {score !== undefined ? score : '?'}
+                          </span>
+                          {isBest && <span style={{ color: '#4caf50', fontSize: '0.8rem' }}>⭐ 최선</span>}
+                        </span>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+
+              {bestMove && (
+                <div style={{
+                  marginTop: '0.75rem',
+                  padding: '0.6rem 0.75rem',
+                  background: '#e8f5e9',
+                  borderRadius: 8,
+                  fontSize: '0.85rem',
+                  color: '#2e7d32',
+                  fontWeight: 'bold',
+                }}>
+                  ✅ 최선: ({bestMove.to.row},{bestMove.to.col})으로 이동하세요!
+                </div>
+              )}
             </div>
           )}
-          <div style={{ marginTop: '1rem', fontSize: 12, color: '#666', lineHeight: 1.6 }}>
-            <strong>MAX</strong> = AI 차례 (이동 가능 수 최대화)<br />
-            <strong>MIN</strong> = 플레이어 차례 (이동 가능 수 최소화)<br />
-            숫자 = AI 이동 가능 수 − 플레이어 이동 가능 수
+
+          <div style={{ marginTop: '1rem', padding: '0.75rem', background: '#e3f2fd', borderRadius: 8, fontSize: '0.82rem', color: '#1565c0', lineHeight: 1.7 }}>
+            <strong>점수 해석</strong><br />
+            점수가 낮을수록 플레이어에게 유리합니다.<br />
+            (AI 이동 가능 수 − 플레이어 이동 가능 수)
           </div>
         </div>
       </div>
