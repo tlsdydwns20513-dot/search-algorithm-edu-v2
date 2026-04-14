@@ -3,5 +3,5 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
-  base: '/search-algorithm-edu/',
+  base: '/search-algorithm-edu-v2/',
 })
