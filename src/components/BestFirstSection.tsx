@@ -158,8 +158,8 @@ export default function BestFirstSection({ onComplete }: BestFirstSectionProps) 
           {/* SVG 지도 */}
           <div style={{ flex: '1 1 320px' }}>
             <svg
-              viewBox="0 0 110 100"
-              style={{ width: '100%', maxWidth: 520, border: '1px solid #e0e0e0', borderRadius: 10, background: '#f0f7ff' }}
+              viewBox="0 0 120 105"
+              style={{ width: '100%', maxWidth: 560, border: '1px solid #e0e0e0', borderRadius: 10, background: '#f0f7ff' }}
             >
               {/* 간선 */}
               {EDGES.map((edge, i) => {
@@ -176,7 +176,7 @@ export default function BestFirstSection({ onComplete }: BestFirstSectionProps) 
                       stroke={isPath ? '#ff9800' : '#b0bec5'}
                       strokeWidth={isPath ? 1.5 : 0.8}
                     />
-                    <text x={mx} y={my - 1} textAnchor="middle" fontSize="2.2" fill="#607d8b">{edge.distance}</text>
+                    <text x={mx} y={my - 1} textAnchor="middle" fontSize="2" fill="#607d8b">{edge.distance}</text>
                   </g>
                 )
               })}
@@ -186,27 +186,22 @@ export default function BestFirstSection({ onComplete }: BestFirstSectionProps) 
                 const status = getNodeStatus(city.id)
                 const color = nodeColors[status]
                 const isClickable = game.openList.includes(city.id) && !game.done
-                // 도시별 라벨 오프셋 (겹침 방지)
-                const labelOffsets: Record<string, { dx: number; dy: number; hdy: number }> = {
-                  busan:     { dx: 0,   dy: -6.5, hdy: 7  },
-                  ulsan:     { dx: 6,   dy: 0,    hdy: 0  },
-                  pohang:    { dx: 6,   dy: 0,    hdy: 0  },
-                  daegu:     { dx: -6,  dy: 0,    hdy: 0  },
-                  gwangju:   { dx: -6,  dy: 0,    hdy: 0  },
-                  jeonju:    { dx: -6,  dy: 0,    hdy: 0  },
-                  daejeon:   { dx: 6,   dy: 0,    hdy: 0  },
-                  incheon:   { dx: -6,  dy: 0,    hdy: 0  },
-                  seoul:     { dx: 0,   dy: -6.5, hdy: 7  },
-                  chuncheon: { dx: 6,   dy: 0,    hdy: 0  },
-                  pyongyang: { dx: -7,  dy: 0,    hdy: 0  },
-                  sinuiju:   { dx: 0,   dy: -6.5, hdy: 7  },
+                // 도시별 라벨 위치 (겹침 방지 - 명시적 지정)
+                const labelConfig: Record<string, { nameX: number; nameY: number; hX: number; hY: number; anchor: string }> = {
+                  busan:     { nameX: city.x,      nameY: city.y - 7,   hX: city.x,      hY: city.y + 8.5, anchor: 'middle' },
+                  ulsan:     { nameX: city.x - 7,  nameY: city.y - 2,   hX: city.x - 7,  hY: city.y + 3,   anchor: 'end'    },
+                  pohang:    { nameX: city.x + 7,  nameY: city.y - 2,   hX: city.x + 7,  hY: city.y + 3,   anchor: 'start'  },
+                  daegu:     { nameX: city.x - 7,  nameY: city.y - 2,   hX: city.x - 7,  hY: city.y + 3,   anchor: 'end'    },
+                  gwangju:   { nameX: city.x - 7,  nameY: city.y - 2,   hX: city.x - 7,  hY: city.y + 3,   anchor: 'end'    },
+                  jeonju:    { nameX: city.x - 7,  nameY: city.y - 2,   hX: city.x - 7,  hY: city.y + 3,   anchor: 'end'    },
+                  daejeon:   { nameX: city.x + 7,  nameY: city.y - 2,   hX: city.x + 7,  hY: city.y + 3,   anchor: 'start'  },
+                  incheon:   { nameX: city.x - 7,  nameY: city.y - 2,   hX: city.x - 7,  hY: city.y + 3,   anchor: 'end'    },
+                  seoul:     { nameX: city.x + 7,  nameY: city.y - 2,   hX: city.x + 7,  hY: city.y + 3,   anchor: 'start'  },
+                  chuncheon: { nameX: city.x + 7,  nameY: city.y - 2,   hX: city.x + 7,  hY: city.y + 3,   anchor: 'start'  },
+                  pyongyang: { nameX: city.x + 7,  nameY: city.y - 2,   hX: city.x + 7,  hY: city.y + 3,   anchor: 'start'  },
+                  sinuiju:   { nameX: city.x,      nameY: city.y - 7,   hX: city.x,      hY: city.y + 8.5, anchor: 'middle' },
                 }
-                const off = labelOffsets[city.id] ?? { dx: 0, dy: -6.5, hdy: 7 }
-                const nameAnchor = off.dx > 0 ? 'start' : off.dx < 0 ? 'end' : 'middle'
-                const nameX = city.x + off.dx
-                const nameY = off.dy !== 0 ? city.y + off.dy : city.y
-                const hX = city.x + (off.dx > 0 ? off.dx : off.dx < 0 ? off.dx : 0)
-                const hY = off.hdy !== 0 ? city.y + off.hdy : city.y + (off.dy < 0 ? 7 : -5)
+                const lc = labelConfig[city.id] ?? { nameX: city.x, nameY: city.y - 7, hX: city.x, hY: city.y + 8.5, anchor: 'middle' }
 
                 return (
                   <g
@@ -215,17 +210,17 @@ export default function BestFirstSection({ onComplete }: BestFirstSectionProps) 
                     style={{ cursor: isClickable ? 'pointer' : 'default' }}
                   >
                     <circle
-                      cx={city.x} cy={city.y} r={5}
+                      cx={city.x} cy={city.y} r={5.5}
                       fill={color}
                       stroke={isClickable ? '#333' : '#fff'}
                       strokeWidth={isClickable ? 0.8 : 0.5}
                     />
                     {/* 도시 이름 */}
-                    <text x={nameX} y={nameY} textAnchor={nameAnchor} fontSize="3" fill="#333" fontWeight="bold">
+                    <text x={lc.nameX} y={lc.nameY} textAnchor={lc.anchor} fontSize="3" fill="#333" fontWeight="bold">
                       {city.name}
                     </text>
                     {/* heuristic 값 */}
-                    <text x={hX} y={hY} textAnchor={nameAnchor} fontSize="2.5" fill="#555">
+                    <text x={lc.hX} y={lc.hY} textAnchor={lc.anchor} fontSize="2.5" fill="#555">
                       h={city.heuristic}
                     </text>
                   </g>
