@@ -34,7 +34,7 @@ export const GONU_VARIANTS: GonuBoardDef[] = [
   {
     variant: 'jul',
     name: '줄고누',
-    description: '3×3 격자. 상대를 이동 불가로 만들면 승리!',
+    description: '3×3 격자. 대각선 이동 가능. 상대를 이동 불가로 만들면 승리!',
     rows: 3, cols: 3,
     board: [
       ['ai',     'ai',     'ai'    ],
@@ -42,15 +42,12 @@ export const GONU_VARIANTS: GonuBoardDef[] = [
       ['player', 'player', 'player'],
     ],
     connections: [
-      // 가로
       [0,0,0,1],[0,1,0,2],
       [1,0,1,1],[1,1,1,2],
       [2,0,2,1],[2,1,2,2],
-      // 세로
       [0,0,1,0],[1,0,2,0],
       [0,1,1,1],[1,1,2,1],
       [0,2,1,2],[1,2,2,2],
-      // 대각선
       [0,0,1,1],[1,1,2,2],
       [0,2,1,1],[1,1,2,0],
     ],
@@ -58,58 +55,7 @@ export const GONU_VARIANTS: GonuBoardDef[] = [
   {
     variant: 'sabang',
     name: '사방고누',
-    description: '모든 방향 대각선이 연결된 3×3 고누. 중앙이 핵심!',
-    rows: 3, cols: 3,
-    board: [
-      ['ai',     'empty',  'ai'    ],
-      ['empty',  'ai',     'empty' ],
-      ['player', 'empty',  'player'],
-    ],
-    connections: [
-      // 가로
-      [0,0,0,1],[0,1,0,2],
-      [1,0,1,1],[1,1,1,2],
-      [2,0,2,1],[2,1,2,2],
-      // 세로
-      [0,0,1,0],[1,0,2,0],
-      [0,1,1,1],[1,1,2,1],
-      [0,2,1,2],[1,2,2,2],
-      // 모든 대각선 (사방 = 4방향 대각선 전부)
-      [0,0,1,1],[1,1,2,2],
-      [0,2,1,1],[1,1,2,0],
-      [0,0,1,1],[0,1,1,0],
-      [0,1,1,2],[0,2,1,1],
-      [1,0,2,1],[1,2,2,1],
-    ],
-  },
-  {
-    variant: 'umul',
-    name: '우물고누',
-    description: '중앙이 "우물"인 3×3 고누. 우물을 차지하면 유리!',
-    rows: 3, cols: 3,
-    board: [
-      ['ai',     'empty',  'ai'    ],
-      ['empty',  'empty',  'empty' ],
-      ['player', 'empty',  'player'],
-    ],
-    connections: [
-      // 가로
-      [0,0,0,1],[0,1,0,2],
-      [1,0,1,1],[1,1,1,2],
-      [2,0,2,1],[2,1,2,2],
-      // 세로
-      [0,0,1,0],[1,0,2,0],
-      [0,1,1,1],[1,1,2,1],
-      [0,2,1,2],[1,2,2,2],
-      // 대각선 (중앙 연결만)
-      [0,0,1,1],[1,1,2,2],
-      [0,2,1,1],[1,1,2,0],
-    ],
-  },
-  {
-    variant: 'hobak',
-    name: '호박고누',
-    description: '원형 테두리가 있는 3×3 고누. 모서리 연결이 특징!',
+    description: '모든 교차점에서 대각선 이동 가능. 중앙 장악이 핵심!',
     rows: 3, cols: 3,
     board: [
       ['ai',     'ai',     'ai'    ],
@@ -117,15 +63,58 @@ export const GONU_VARIANTS: GonuBoardDef[] = [
       ['player', 'player', 'player'],
     ],
     connections: [
-      // 가로
       [0,0,0,1],[0,1,0,2],
       [1,0,1,1],[1,1,1,2],
       [2,0,2,1],[2,1,2,2],
-      // 세로
       [0,0,1,0],[1,0,2,0],
       [0,1,1,1],[1,1,2,1],
       [0,2,1,2],[1,2,2,2],
-      // 대각선
+      // 모든 대각선
+      [0,0,1,1],[1,1,2,2],
+      [0,2,1,1],[1,1,2,0],
+      [0,1,1,0],[0,1,1,2],
+      [1,0,2,1],[1,2,2,1],
+    ],
+  },
+  {
+    variant: 'umul',
+    name: '우물고누',
+    description: '중앙이 "우물". 우물 칸을 차지하면 이동 범위가 넓어져 유리!',
+    rows: 3, cols: 3,
+    board: [
+      ['ai',     'ai',     'ai'    ],
+      ['empty',  'empty',  'empty' ],
+      ['player', 'player', 'player'],
+    ],
+    connections: [
+      [0,0,0,1],[0,1,0,2],
+      [1,0,1,1],[1,1,1,2],
+      [2,0,2,1],[2,1,2,2],
+      [0,0,1,0],[1,0,2,0],
+      [0,1,1,1],[1,1,2,1],
+      [0,2,1,2],[1,2,2,2],
+      // 중앙(1,1)에서 모든 방향 대각선
+      [0,0,1,1],[1,1,2,2],
+      [0,2,1,1],[1,1,2,0],
+    ],
+  },
+  {
+    variant: 'hobak',
+    name: '호박고누',
+    description: '원형 테두리로 모서리끼리 연결. 독특한 이동 경로!',
+    rows: 3, cols: 3,
+    board: [
+      ['ai',     'ai',     'ai'    ],
+      ['empty',  'empty',  'empty' ],
+      ['player', 'player', 'player'],
+    ],
+    connections: [
+      [0,0,0,1],[0,1,0,2],
+      [1,0,1,1],[1,1,1,2],
+      [2,0,2,1],[2,1,2,2],
+      [0,0,1,0],[1,0,2,0],
+      [0,1,1,1],[1,1,2,1],
+      [0,2,1,2],[1,2,2,2],
       [0,0,1,1],[1,1,2,2],
       [0,2,1,1],[1,1,2,0],
       // 호박 특유: 모서리끼리 원형 연결
@@ -135,17 +124,15 @@ export const GONU_VARIANTS: GonuBoardDef[] = [
   {
     variant: 'neomgi',
     name: '넘기고누',
-    description: '2×3 직사각형 판. 대각선 없이 상하좌우만 이동!',
+    description: '2×3 판. 대각선 없이 상하좌우만 이동. 단순하지만 치열!',
     rows: 2, cols: 3,
     board: [
       ['ai',     'ai',     'ai'    ],
       ['player', 'player', 'player'],
     ],
     connections: [
-      // 가로
       [0,0,0,1],[0,1,0,2],
       [1,0,1,1],[1,1,1,2],
-      // 세로만 (대각선 없음)
       [0,0,1,0],[0,1,1,1],[0,2,1,2],
     ],
   },
@@ -157,6 +144,10 @@ export const INITIAL_GONU_BOARD: GonuBoard = GONU_VARIANTS[0].board
 
 export function generateRandomGonuBoard(): GonuBoard {
   return GONU_VARIANTS[Math.floor(Math.random() * GONU_VARIANTS.length)].board
+}
+
+export function generateRandomGonuVariant(): GonuBoardDef {
+  return GONU_VARIANTS[Math.floor(Math.random() * GONU_VARIANTS.length)]
 }
 
 export function evaluateBoard(board: GonuBoard, connections?: [number,number,number,number][]): number {
