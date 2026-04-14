@@ -1,105 +1,220 @@
 import { GonuBoard, GonuMove, Position, GameTreeNode, CellState } from '../types/index'
 
-/**
- * 초기 보드 (3×3):
- * 0행: AI, AI, AI
- * 1행: 빈, 빈, 빈
- * 2행: 플레이어, 플레이어, 플레이어
- */
-export const INITIAL_GONU_BOARD: GonuBoard = [
-  ['ai',     'ai',     'ai'    ],
-  ['empty',  'empty',  'empty' ],
-  ['player', 'player', 'player'],
-]
+// ─── 고누 판 종류 정의 ────────────────────────────────────────────────────────
 
-/**
- * 랜덤 고누 보드 생성
- * 여러 가지 초기 배치 중 랜덤 선택 (양쪽 모두 이동 가능한 상태)
- */
-export function generateRandomGonuBoard(): GonuBoard {
-  const validLayouts: GonuBoard[] = [
-    // 기본 배치 (AI 상단, 플레이어 하단)
-    [['ai','ai','ai'],['empty','empty','empty'],['player','player','player']],
-    // 엇갈린 배치 1
-    [['empty','ai','empty'],['ai','empty','ai'],['player','player','player']],
-    // 엇갈린 배치 2
-    [['ai','ai','ai'],['player','empty','player'],['empty','player','empty']],
-    // 대각 배치
-    [['ai','empty','ai'],['empty','ai','empty'],['player','player','player']],
-    // 중앙 집중 배치
-    [['ai','ai','ai'],['empty','empty','empty'],['player','empty','player']],
-  ]
-  // 양쪽 모두 이동 가능한 배치만 반환
-  const valid = validLayouts.filter(b => {
-    const pm = getValidMoves(b, 'player')
-    const am = getValidMoves(b, 'ai')
-    return pm.length > 0 && am.length > 0
-  })
-  return valid[Math.floor(Math.random() * valid.length)]
+export type GonuVariant = 'jul' | 'sabang' | 'umul' | 'hobak' | 'neomgi'
+
+export interface GonuBoardDef {
+  variant: GonuVariant
+  name: string
+  description: string
+  rows: number
+  cols: number
+  board: GonuBoard
+  // [r1,c1,r2,c2] 형태의 연결 목록 (양방향)
+  connections: [number, number, number, number][]
 }
 
-/**
- * 보드 평가: 플레이어 이동 가능 수 - AI 이동 가능 수
- * 양수 = 플레이어 유리, 음수 = AI 유리
- * (AI가 MAX이므로 AI 이동 가능 수 - 플레이어 이동 가능 수)
- */
-export function evaluateBoard(board: GonuBoard): number {
-  const aiMoves = getValidMoves(board, 'ai').length
-  const playerMoves = getValidMoves(board, 'player').length
+/** 두 위치가 연결되어 있는지 확인 */
+function isConnected(
+  r1: number, c1: number,
+  r2: number, c2: number,
+  connections: [number, number, number, number][]
+): boolean {
+  return connections.some(
+    ([a, b, c, d]) =>
+      (a === r1 && b === c1 && c === r2 && d === c2) ||
+      (a === r2 && b === c2 && c === r1 && d === c1)
+  )
+}
+
+// ─── 5가지 고누 판 정의 ───────────────────────────────────────────────────────
+
+export const GONU_VARIANTS: GonuBoardDef[] = [
+  {
+    variant: 'jul',
+    name: '줄고누',
+    description: '3×3 격자. 상대를 이동 불가로 만들면 승리!',
+    rows: 3, cols: 3,
+    board: [
+      ['ai',     'ai',     'ai'    ],
+      ['empty',  'empty',  'empty' ],
+      ['player', 'player', 'player'],
+    ],
+    connections: [
+      // 가로
+      [0,0,0,1],[0,1,0,2],
+      [1,0,1,1],[1,1,1,2],
+      [2,0,2,1],[2,1,2,2],
+      // 세로
+      [0,0,1,0],[1,0,2,0],
+      [0,1,1,1],[1,1,2,1],
+      [0,2,1,2],[1,2,2,2],
+      // 대각선
+      [0,0,1,1],[1,1,2,2],
+      [0,2,1,1],[1,1,2,0],
+    ],
+  },
+  {
+    variant: 'sabang',
+    name: '사방고누',
+    description: '모든 방향 대각선이 연결된 3×3 고누. 중앙이 핵심!',
+    rows: 3, cols: 3,
+    board: [
+      ['ai',     'empty',  'ai'    ],
+      ['empty',  'ai',     'empty' ],
+      ['player', 'empty',  'player'],
+    ],
+    connections: [
+      // 가로
+      [0,0,0,1],[0,1,0,2],
+      [1,0,1,1],[1,1,1,2],
+      [2,0,2,1],[2,1,2,2],
+      // 세로
+      [0,0,1,0],[1,0,2,0],
+      [0,1,1,1],[1,1,2,1],
+      [0,2,1,2],[1,2,2,2],
+      // 모든 대각선 (사방 = 4방향 대각선 전부)
+      [0,0,1,1],[1,1,2,2],
+      [0,2,1,1],[1,1,2,0],
+      [0,0,1,1],[0,1,1,0],
+      [0,1,1,2],[0,2,1,1],
+      [1,0,2,1],[1,2,2,1],
+    ],
+  },
+  {
+    variant: 'umul',
+    name: '우물고누',
+    description: '중앙이 "우물"인 3×3 고누. 우물을 차지하면 유리!',
+    rows: 3, cols: 3,
+    board: [
+      ['ai',     'empty',  'ai'    ],
+      ['empty',  'empty',  'empty' ],
+      ['player', 'empty',  'player'],
+    ],
+    connections: [
+      // 가로
+      [0,0,0,1],[0,1,0,2],
+      [1,0,1,1],[1,1,1,2],
+      [2,0,2,1],[2,1,2,2],
+      // 세로
+      [0,0,1,0],[1,0,2,0],
+      [0,1,1,1],[1,1,2,1],
+      [0,2,1,2],[1,2,2,2],
+      // 대각선 (중앙 연결만)
+      [0,0,1,1],[1,1,2,2],
+      [0,2,1,1],[1,1,2,0],
+    ],
+  },
+  {
+    variant: 'hobak',
+    name: '호박고누',
+    description: '원형 테두리가 있는 3×3 고누. 모서리 연결이 특징!',
+    rows: 3, cols: 3,
+    board: [
+      ['ai',     'ai',     'ai'    ],
+      ['empty',  'empty',  'empty' ],
+      ['player', 'player', 'player'],
+    ],
+    connections: [
+      // 가로
+      [0,0,0,1],[0,1,0,2],
+      [1,0,1,1],[1,1,1,2],
+      [2,0,2,1],[2,1,2,2],
+      // 세로
+      [0,0,1,0],[1,0,2,0],
+      [0,1,1,1],[1,1,2,1],
+      [0,2,1,2],[1,2,2,2],
+      // 대각선
+      [0,0,1,1],[1,1,2,2],
+      [0,2,1,1],[1,1,2,0],
+      // 호박 특유: 모서리끼리 원형 연결
+      [0,0,0,2],[0,2,2,2],[2,2,2,0],[2,0,0,0],
+    ],
+  },
+  {
+    variant: 'neomgi',
+    name: '넘기고누',
+    description: '2×3 직사각형 판. 대각선 없이 상하좌우만 이동!',
+    rows: 2, cols: 3,
+    board: [
+      ['ai',     'ai',     'ai'    ],
+      ['player', 'player', 'player'],
+    ],
+    connections: [
+      // 가로
+      [0,0,0,1],[0,1,0,2],
+      [1,0,1,1],[1,1,1,2],
+      // 세로만 (대각선 없음)
+      [0,0,1,0],[0,1,1,1],[0,2,1,2],
+    ],
+  },
+]
+
+// ─── 알고리즘 함수 ────────────────────────────────────────────────────────────
+
+export const INITIAL_GONU_BOARD: GonuBoard = GONU_VARIANTS[0].board
+
+export function generateRandomGonuBoard(): GonuBoard {
+  return GONU_VARIANTS[Math.floor(Math.random() * GONU_VARIANTS.length)].board
+}
+
+export function evaluateBoard(board: GonuBoard, connections?: [number,number,number,number][]): number {
+  const aiMoves = getValidMoves(board, 'ai', connections).length
+  const playerMoves = getValidMoves(board, 'player', connections).length
   return aiMoves - playerMoves
 }
 
-/**
- * 보드 깊은 복사
- */
 function cloneBoard(board: GonuBoard): GonuBoard {
   return board.map(row => [...row])
 }
 
-/**
- * 위치가 보드 범위 내인지 확인 (3×3)
- */
-function inBounds(row: number, col: number): boolean {
-  return row >= 0 && row < 3 && col >= 0 && col < 3
+function inBounds(row: number, col: number, rows: number, cols: number): boolean {
+  return row >= 0 && row < rows && col >= 0 && col < cols
 }
 
-/**
- * 특정 플레이어의 유효한 이동 목록 반환
- * 이동 규칙:
- * - 상하좌우 + 대각선 1칸 이동 (빈 칸으로만, 점프 없음)
- */
-export function getValidMoves(board: GonuBoard, player: 'player' | 'ai'): GonuMove[] {
+export function getValidMoves(
+  board: GonuBoard,
+  player: 'player' | 'ai',
+  connections?: [number, number, number, number][]
+): GonuMove[] {
   const moves: GonuMove[] = []
-  const directions = [
-    [-1, 0], [1, 0], [0, -1], [0, 1],   // 상하좌우
-    [-1, -1], [-1, 1], [1, -1], [1, 1], // 대각선
-  ]
+  const rows = board.length
+  const cols = board[0].length
 
-  for (let row = 0; row < 3; row++) {
-    for (let col = 0; col < 3; col++) {
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < cols; col++) {
       if (board[row][col] !== player) continue
-
       const from: Position = { row, col }
 
-      for (const [dr, dc] of directions) {
-        const nr = row + dr
-        const nc = col + dc
-
-        if (!inBounds(nr, nc)) continue
-
-        if (board[nr][nc] === 'empty') {
-          moves.push({ from, to: { row: nr, col: nc }, player })
+      if (connections) {
+        // connections 기반 이동
+        for (const [r1, c1, r2, c2] of connections) {
+          let nr = -1, nc = -1
+          if (r1 === row && c1 === col) { nr = r2; nc = c2 }
+          else if (r2 === row && c2 === col) { nr = r1; nc = c1 }
+          if (nr >= 0 && inBounds(nr, nc, rows, cols) && board[nr][nc] === 'empty') {
+            moves.push({ from, to: { row: nr, col: nc }, player })
+          }
+        }
+      } else {
+        // 기본 3×3 전방향
+        const directions = [
+          [-1,0],[1,0],[0,-1],[0,1],
+          [-1,-1],[-1,1],[1,-1],[1,1],
+        ]
+        for (const [dr, dc] of directions) {
+          const nr = row + dr, nc = col + dc
+          if (inBounds(nr, nc, rows, cols) && board[nr][nc] === 'empty') {
+            moves.push({ from, to: { row: nr, col: nc }, player })
+          }
         }
       }
     }
   }
-
   return moves
 }
 
-/**
- * 이동 적용 후 새 보드 반환 (원본 불변)
- */
 export function applyGonuMove(board: GonuBoard, move: GonuMove): GonuBoard {
   const newBoard = cloneBoard(board)
   newBoard[move.to.row][move.to.col] = newBoard[move.from.row][move.from.col]
@@ -107,30 +222,22 @@ export function applyGonuMove(board: GonuBoard, move: GonuMove): GonuBoard {
   return newBoard
 }
 
-/**
- * 게임 종료 조건: 한쪽 플레이어가 이동 불가 상태
- */
-export function isTerminal(board: GonuBoard): boolean {
-  const playerMoves = getValidMoves(board, 'player')
-  const aiMoves = getValidMoves(board, 'ai')
-  return playerMoves.length === 0 || aiMoves.length === 0
+export function isTerminal(board: GonuBoard, connections?: [number,number,number,number][]): boolean {
+  return (
+    getValidMoves(board, 'player', connections).length === 0 ||
+    getValidMoves(board, 'ai', connections).length === 0
+  )
 }
 
-/**
- * 미니맥스 알고리즘 (depth=3)
- * @param board 현재 보드 상태
- * @param depth 탐색 깊이
- * @param isMaximizing true=AI 차례(최대화), false=플레이어 차례(최소화)
- * @param buildTree 게임 트리 구성 여부
- */
 export function minimax(
   board: GonuBoard,
   depth: number,
   isMaximizing: boolean,
-  buildTree: boolean = false
+  buildTree: boolean = false,
+  connections?: [number, number, number, number][]
 ): { score: number; move: GonuMove | null; tree?: GameTreeNode } {
-  if (depth === 0 || isTerminal(board)) {
-    const score = evaluateBoard(board)
+  if (depth === 0 || isTerminal(board, connections)) {
+    const score = evaluateBoard(board, connections)
     const node: GameTreeNode | undefined = buildTree
       ? { board: cloneBoard(board), move: null, score, isMax: isMaximizing, children: [], depth }
       : undefined
@@ -138,10 +245,10 @@ export function minimax(
   }
 
   const player = isMaximizing ? 'ai' : 'player'
-  const moves = getValidMoves(board, player)
+  const moves = getValidMoves(board, player, connections)
 
   if (moves.length === 0) {
-    const score = evaluateBoard(board)
+    const score = evaluateBoard(board, connections)
     const node: GameTreeNode | undefined = buildTree
       ? { board: cloneBoard(board), move: null, score, isMax: isMaximizing, children: [], depth }
       : undefined
@@ -154,7 +261,7 @@ export function minimax(
 
   for (const move of moves) {
     const newBoard = applyGonuMove(board, move)
-    const result = minimax(newBoard, depth - 1, !isMaximizing, buildTree)
+    const result = minimax(newBoard, depth - 1, !isMaximizing, buildTree, connections)
 
     if (isMaximizing ? result.score > bestScore : result.score < bestScore) {
       bestScore = result.score
@@ -162,25 +269,12 @@ export function minimax(
     }
 
     if (buildTree && result.tree) {
-      children.push({
-        ...result.tree,
-        move,
-        score: result.score,
-        isMax: !isMaximizing,
-        depth: depth - 1,
-      })
+      children.push({ ...result.tree, move, score: result.score, isMax: !isMaximizing, depth: depth - 1 })
     }
   }
 
   const tree: GameTreeNode | undefined = buildTree
-    ? {
-        board: cloneBoard(board),
-        move: null,
-        score: bestScore,
-        isMax: isMaximizing,
-        children,
-        depth,
-      }
+    ? { board: cloneBoard(board), move: null, score: bestScore, isMax: isMaximizing, children, depth }
     : undefined
 
   return { score: bestScore, move: bestMove, tree }
