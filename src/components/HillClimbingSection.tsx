@@ -6,6 +6,7 @@ import {
   computePreviewValues,
   isLocalMinimum,
   generateEasyPuzzle,
+  generateMediumPuzzle,
   applyMove,
 } from '../algorithms/puzzle8'
 import { PuzzleBoard, GOAL_STATE } from '../types/index'
@@ -22,6 +23,7 @@ interface MoveRecord {
 }
 
 export default function HillClimbingSection({ onComplete }: HillClimbingSectionProps) {
+  const [difficulty, setDifficulty] = useState<'easy' | 'medium'>('easy')
   const [board, setBoard] = useState<PuzzleBoard>(() => generateEasyPuzzle())
   const [moveCount, setMoveCount] = useState(0)
   const [history, setHistory] = useState<MoveRecord[]>([])
@@ -57,11 +59,12 @@ export default function HillClimbingSection({ onComplete }: HillClimbingSectionP
     setMoveCount(c => c + 1)
   }, [board, adjacentIndices, solved, moveCount])
 
-  const handleReset = () => {
-    setBoard(generateEasyPuzzle())
+  const handleReset = useCallback((diff?: 'easy' | 'medium') => {
+    const d = diff ?? difficulty
+    setBoard(d === 'easy' ? generateEasyPuzzle() : generateMediumPuzzle())
     setMoveCount(0)
     setHistory([])
-  }
+  }, [difficulty])
 
   return (
     <div className="section">
@@ -110,6 +113,41 @@ export default function HillClimbingSection({ onComplete }: HillClimbingSectionP
       </div>
 
       <div className="content-card">
+        {/* 난이도 탭 */}
+        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.25rem' }}>
+          <button
+            onClick={() => { setDifficulty('easy'); handleReset('easy') }}
+            style={{
+              padding: '0.5rem 1.2rem',
+              borderRadius: 8,
+              border: 'none',
+              cursor: 'pointer',
+              fontWeight: 'bold',
+              fontSize: '0.9rem',
+              background: difficulty === 'easy' ? '#667eea' : '#e0e0e0',
+              color: difficulty === 'easy' ? 'white' : '#555',
+              transition: 'all 0.2s',
+            }}
+          >
+            🟢 초급 (4~6회 이동)
+          </button>
+          <button
+            onClick={() => { setDifficulty('medium'); handleReset('medium') }}
+            style={{
+              padding: '0.5rem 1.2rem',
+              borderRadius: 8,
+              border: 'none',
+              cursor: 'pointer',
+              fontWeight: 'bold',
+              fontSize: '0.9rem',
+              background: difficulty === 'medium' ? '#ff9800' : '#e0e0e0',
+              color: difficulty === 'medium' ? 'white' : '#555',
+              transition: 'all 0.2s',
+            }}
+          >
+            🟡 중급 (8~12회 이동)
+          </button>
+        </div>
         <div style={{ display: 'flex', gap: '2rem', justifyContent: 'center', flexWrap: 'wrap', alignItems: 'flex-start' }}>
           {/* 현재 상태 보드 */}
           <div>
@@ -249,7 +287,7 @@ export default function HillClimbingSection({ onComplete }: HillClimbingSectionP
         </div>
 
         <div className="controls" style={{ justifyContent: 'center', marginTop: '1rem' }}>
-          <button className="control-btn" onClick={handleReset}>
+          <button className="control-btn" onClick={() => handleReset()}>
             🔄 초기화
           </button>
         </div>
