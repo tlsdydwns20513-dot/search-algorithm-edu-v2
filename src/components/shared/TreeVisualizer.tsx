@@ -18,9 +18,9 @@ const STATUS_COLORS: Record<string, string> = {
   goal: '#ffd700',
 }
 
-const NODE_RADIUS = 22
-const H_GAP = 60
-const V_GAP = 70
+const NODE_RADIUS = 28
+const H_GAP = 80
+const V_GAP = 90
 
 interface LayoutNode {
   id: string
@@ -57,6 +57,16 @@ function buildLayout(nodes: SearchTreeNode[], mode: 'dfs' | 'bfs'): LayoutNode[]
         })
       })
     }
+
+    // 중앙 정렬: minX/maxX 기준으로 오프셋 적용
+    if (layout.length > 0) {
+      const xs = layout.map(l => l.x)
+      const minX = Math.min(...xs)
+      const maxX = Math.max(...xs)
+      const offsetX = -(minX + maxX) / 2
+      for (const l of layout) l.x += offsetX
+    }
+
     return layout
   } else {
     // DFS: 방문 순서 기반 레이아웃 (트리 구조 유지)
@@ -83,6 +93,16 @@ function buildLayout(nodes: SearchTreeNode[], mode: 'dfs' | 'bfs'): LayoutNode[]
 
     const root = nodes.find(n => n.parentId === null)
     if (root) dfsLayout(root.id, 0)
+
+    // 중앙 정렬: minX/maxX 기준으로 오프셋 적용
+    if (layout.length > 0) {
+      const xs = layout.map(l => l.x)
+      const minX = Math.min(...xs)
+      const maxX = Math.max(...xs)
+      const offsetX = -(minX + maxX) / 2
+      for (const l of layout) l.x += offsetX
+    }
+
     return layout
   }
 }
@@ -113,8 +133,12 @@ export default function TreeVisualizer({ nodes, currentNodeId, mode, width = 700
   const minY = Math.min(...ys) - NODE_RADIUS - 20
   const maxY = Math.max(...ys) + NODE_RADIUS + 30
 
-  const svgWidth = Math.max(maxX - minX, width)
+  const contentWidth = maxX - minX
+  const svgWidth = Math.max(contentWidth, width)
   const svgHeight = Math.max(maxY - minY, height)
+
+  // 루트가 SVG 중앙 상단에 오도록 중앙 정렬
+  const offsetX = -minX + (svgWidth - contentWidth) / 2
 
   const nodeMap = new Map(nodes.map(n => [n.id, n]))
 
@@ -124,7 +148,7 @@ export default function TreeVisualizer({ nodes, currentNodeId, mode, width = 700
       style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: height, border: '1px solid #eee', borderRadius: 8, background: '#fafafa' }}
     >
       <svg width={svgWidth} height={svgHeight} style={{ display: 'block' }}>
-        <g transform={`translate(${-minX}, ${-minY})`}>
+        <g transform={`translate(${offsetX}, ${-minY})`}>
           {/* 엣지 */}
           {nodes.map(n => {
             if (!n.parentId) return null
@@ -161,7 +185,7 @@ export default function TreeVisualizer({ nodes, currentNodeId, mode, width = 700
                 <text
                   textAnchor="middle"
                   dominantBaseline="middle"
-                  fontSize={9}
+                  fontSize={13}
                   fill={textColor}
                   style={{ pointerEvents: 'none', userSelect: 'none' }}
                 >
@@ -171,7 +195,7 @@ export default function TreeVisualizer({ nodes, currentNodeId, mode, width = 700
                 <text
                   y={NODE_RADIUS + 12}
                   textAnchor="middle"
-                  fontSize={8}
+                  fontSize={11}
                   fill="#555"
                   style={{ pointerEvents: 'none', userSelect: 'none' }}
                 >
