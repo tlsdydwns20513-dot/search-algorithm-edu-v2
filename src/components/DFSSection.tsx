@@ -111,8 +111,8 @@ export default function DFSSection({ onComplete }: DFSSectionProps) {
                 allNodes={allNodes}
                 currentNodeId={step.nodeId}
                 mode="dfs"
-                width={700}
-                height={340}
+                width={900}
+                height={500}
               />
             </div>
 
