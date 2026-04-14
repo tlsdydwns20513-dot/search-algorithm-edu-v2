@@ -5,7 +5,7 @@ import {
   getAdjacentIndices,
   computePreviewValues,
   isLocalMinimum,
-  generateSolvablePuzzle,
+  generateEasyPuzzle,
   applyMove,
 } from '../algorithms/puzzle8'
 import { PuzzleBoard, GOAL_STATE } from '../types/index'
@@ -22,7 +22,7 @@ interface MoveRecord {
 }
 
 export default function HillClimbingSection({ onComplete }: HillClimbingSectionProps) {
-  const [board, setBoard] = useState<PuzzleBoard>(() => generateSolvablePuzzle())
+  const [board, setBoard] = useState<PuzzleBoard>(() => generateEasyPuzzle())
   const [moveCount, setMoveCount] = useState(0)
   const [history, setHistory] = useState<MoveRecord[]>([])
 
@@ -58,7 +58,7 @@ export default function HillClimbingSection({ onComplete }: HillClimbingSectionP
   }, [board, adjacentIndices, solved, moveCount])
 
   const handleReset = () => {
-    setBoard(generateSolvablePuzzle())
+    setBoard(generateEasyPuzzle())
     setMoveCount(0)
     setHistory([])
   }
