@@ -176,8 +176,8 @@ export default function BFSSection({ onComplete }: BFSSectionProps) {
                 allNodes={allNodes}
                 currentNodeId={step.nodeId}
                 mode="bfs"
-                width={700}
-                height={340}
+                width={1200}
+                height={500}
               />
             </div>
 
