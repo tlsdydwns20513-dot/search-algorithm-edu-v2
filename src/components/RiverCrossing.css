@@ -1,0 +1,273 @@
+/* ===== 강 건너기 게임 스타일 ===== */
+
+.rc-game-container {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+  min-height: 280px;
+  margin: 1.5rem 0;
+}
+
+/* 좌안 / 우안 */
+.rc-bank {
+  flex: 1;
+  padding: 1.5rem 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.rc-bank.left-bank {
+  background: linear-gradient(160deg, #e8f5e9 0%, #c8e6c9 100%);
+}
+
+.rc-bank.right-bank {
+  background: linear-gradient(160deg, #fff3e0 0%, #ffe0b2 100%);
+}
+
+.rc-bank-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #555;
+  margin-bottom: 0.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.rc-entities {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  justify-content: center;
+  flex: 1;
+  align-content: flex-start;
+  padding-top: 0.5rem;
+}
+
+/* 엔티티 카드 */
+.rc-entity-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  background: white;
+  border: 2.5px solid transparent;
+  border-radius: 12px;
+  padding: 0.6rem 0.8rem;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+  min-width: 64px;
+  user-select: none;
+}
+
+.rc-entity-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 14px rgba(0,0,0,0.14);
+}
+
+.rc-entity-card.selected {
+  border-color: #667eea;
+  background: #eef0ff;
+  transform: translateY(-3px);
+  box-shadow: 0 6px 14px rgba(102,126,234,0.35);
+}
+
+.rc-entity-card.farmer-card {
+  cursor: default;
+  opacity: 0.85;
+}
+
+.rc-entity-card.farmer-card:hover {
+  transform: none;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+}
+
+.rc-entity-emoji {
+  font-size: 2.2rem;
+  line-height: 1;
+}
+
+.rc-entity-name {
+  font-size: 0.72rem;
+  color: #666;
+  font-weight: 600;
+}
+
+/* 강 중앙 */
+.rc-river {
+  width: 120px;
+  flex-shrink: 0;
+  background: linear-gradient(180deg, #90caf9 0%, #1976d2 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  gap: 0.5rem;
+}
+
+.rc-river-label {
+  color: rgba(255,255,255,0.85);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 2px;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+}
+
+.rc-boat {
+  font-size: 2rem;
+  transition: transform 0.5s ease;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+}
+
+.rc-boat.boat-left {
+  transform: translateX(-30px);
+}
+
+.rc-boat.boat-right {
+  transform: translateX(30px);
+}
+
+/* 컨트롤 영역 */
+.rc-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  margin-top: 1rem;
+}
+
+.rc-move-btn {
+  padding: 0.65rem 1.4rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.18s;
+}
+
+.rc-move-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102,126,234,0.4);
+}
+
+.rc-move-btn:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.rc-farmer-btn {
+  padding: 0.65rem 1.4rem;
+  background: linear-gradient(135deg, #43a047 0%, #1b5e20 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.18s;
+}
+
+.rc-farmer-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(67,160,71,0.4);
+}
+
+.rc-reset-btn {
+  padding: 0.65rem 1.2rem;
+  background: #f5f5f5;
+  color: #555;
+  border: 1.5px solid #ddd;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.18s;
+  margin-left: auto;
+}
+
+.rc-reset-btn:hover {
+  background: #eeeeee;
+}
+
+/* 메시지 */
+.rc-message {
+  padding: 0.75rem 1.2rem;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  margin-top: 0.75rem;
+  animation: fadeIn 0.25s ease;
+}
+
+.rc-message.error {
+  background: #ffebee;
+  color: #c62828;
+  border: 1px solid #ef9a9a;
+}
+
+.rc-message.success {
+  background: #e8f5e9;
+  color: #2e7d32;
+  border: 1px solid #a5d6a7;
+}
+
+.rc-message.win {
+  background: linear-gradient(135deg, #fff9c4, #fff176);
+  color: #f57f17;
+  border: 2px solid #ffd54f;
+  font-size: 1.1rem;
+  text-align: center;
+  animation: celebrate 0.6s ease;
+}
+
+.rc-move-counter {
+  font-size: 0.95rem;
+  color: #667eea;
+  font-weight: 700;
+  padding: 0.4rem 0.9rem;
+  background: #eef0ff;
+  border-radius: 20px;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes celebrate {
+  0%   { transform: scale(0.9); }
+  50%  { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+/* 반응형 */
+@media (max-width: 600px) {
+  .rc-game-container {
+    flex-direction: column;
+  }
+  .rc-river {
+    width: 100%;
+    height: 70px;
+    flex-direction: row;
+    writing-mode: horizontal-tb;
+  }
+  .rc-river-label {
+    writing-mode: horizontal-tb;
+  }
+  .rc-boat.boat-left,
+  .rc-boat.boat-right {
+    transform: none;
+  }
+}
