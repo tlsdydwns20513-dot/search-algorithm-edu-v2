@@ -135,18 +135,20 @@ export default function TreeVisualizer({ nodes, allNodes, currentNodeId, mode, w
   const minY = Math.min(...ys) - NODE_RADIUS - 20
   const maxY = Math.max(...ys) + NODE_RADIUS + 30
 
-  const contentWidth = maxX - minX
-  const svgWidth = Math.max(contentWidth, width)
-  const svgHeight = Math.max(maxY - minY, height)
+  const svgWidth = maxX - minX
+  const svgHeight = maxY - minY
 
-  const offsetX = -minX + (svgWidth - contentWidth) / 2
+  const offsetX = -minX
 
   return (
     <div
       ref={containerRef}
-      style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: height, border: '1px solid #eee', borderRadius: 8, background: '#fafafa' }}
+      style={{ overflow: 'hidden', width: '100%', border: '1px solid #eee', borderRadius: 8, background: '#fafafa' }}
     >
-      <svg width={svgWidth} height={svgHeight} style={{ display: 'block' }}>
+      <svg
+        viewBox={`0 0 ${svgWidth} ${svgHeight}`}
+        style={{ width: '100%', height: 'auto', display: 'block' }}
+      >
         <g transform={`translate(${offsetX}, ${-minY})`}>
           {/* 엣지 - allNodes 기준으로 그리기 */}
           {baseNodes.map(n => {
