@@ -1,18 +1,18 @@
 import { CityId, City, CityEdge } from '../types/index'
 
 export const CITIES: City[] = [
-  { id: 'busan',     name: '부산',   x: 82, y: 85, heuristic: 1100 },
-  { id: 'ulsan',     name: '울산',   x: 78, y: 78, heuristic: 1020 },
-  { id: 'pohang',    name: '포항',   x: 85, y: 70, heuristic: 960  },
-  { id: 'daegu',     name: '대구',   x: 70, y: 72, heuristic: 900  },
-  { id: 'gwangju',   name: '광주',   x: 38, y: 78, heuristic: 820  },
-  { id: 'jeonju',    name: '전주',   x: 42, y: 68, heuristic: 720  },
-  { id: 'daejeon',   name: '대전',   x: 52, y: 60, heuristic: 680  },
-  { id: 'incheon',   name: '인천',   x: 32, y: 48, heuristic: 520  },
-  { id: 'seoul',     name: '서울',   x: 45, y: 45, heuristic: 480  },
-  { id: 'chuncheon', name: '춘천',   x: 60, y: 40, heuristic: 420  },
-  { id: 'pyongyang', name: '평양',   x: 40, y: 25, heuristic: 200  },
-  { id: 'sinuiju',   name: '신의주', x: 22, y: 12, heuristic: 0    },
+  { id: 'busan',     name: '부산',   x: 85, y: 90, heuristic: 1100 },
+  { id: 'ulsan',     name: '울산',   x: 75, y: 80, heuristic: 1020 },
+  { id: 'pohang',    name: '포항',   x: 90, y: 72, heuristic: 960  },
+  { id: 'daegu',     name: '대구',   x: 65, y: 70, heuristic: 900  },
+  { id: 'gwangju',   name: '광주',   x: 30, y: 80, heuristic: 820  },
+  { id: 'jeonju',    name: '전주',   x: 38, y: 68, heuristic: 720  },
+  { id: 'daejeon',   name: '대전',   x: 55, y: 58, heuristic: 680  },
+  { id: 'incheon',   name: '인천',   x: 28, y: 46, heuristic: 520  },
+  { id: 'seoul',     name: '서울',   x: 44, y: 44, heuristic: 480  },
+  { id: 'chuncheon', name: '춘천',   x: 62, y: 38, heuristic: 420  },
+  { id: 'pyongyang', name: '평양',   x: 38, y: 24, heuristic: 200  },
+  { id: 'sinuiju',   name: '신의주', x: 20, y: 10, heuristic: 0    },
 ]
 
 export const EDGES: CityEdge[] = [
