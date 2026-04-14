@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useCallback } from 'react'
 import './Section.css'
 import {
   INITIAL_GONU_BOARD,
@@ -17,12 +17,12 @@ interface MinimaxSectionProps {
 type GamePhase = 'rules' | 'playing' | 'ended'
 type Turn = 'player' | 'ai'
 
-// ─── 고누 보드 SVG ───────────────────────────────────────────────────────────
+// ─── 고누 보드 SVG (3×3) ──────────────────────────────────────────────────────
 
-const CELL = 80   // 격자 간격 (px)
-const PAD  = 40   // 여백
-const R    = 22   // 말 반지름
-const BOARD_SIZE = PAD * 2 + CELL * 3  // 320
+const CELL = 100  // 격자 간격 (px)
+const PAD  = 50   // 여백
+const R    = 26   // 말 반지름
+const BOARD_SIZE = PAD * 2 + CELL * 2  // 300
 
 function GonuBoardSVG({
   board,
@@ -39,20 +39,18 @@ function GonuBoardSVG({
 }) {
   const validTargets = new Set(validMoves.map(m => `${m.to.row},${m.to.col}`))
 
-  // 대각선 연결선: 체스판 패턴 (짝수 칸에서 대각선)
+  // 모든 교차점에서 대각선 연결선 그리기
   const diagonalLines: JSX.Element[] = []
-  for (let r = 0; r < 3; r++) {
-    for (let c = 0; c < 3; c++) {
+  for (let r = 0; r < 2; r++) {
+    for (let c = 0; c < 2; c++) {
       const x1 = PAD + c * CELL
       const y1 = PAD + r * CELL
       const x2 = PAD + (c + 1) * CELL
       const y2 = PAD + (r + 1) * CELL
-      if ((r + c) % 2 === 0) {
-        diagonalLines.push(
-          <line key={`d1-${r}-${c}`} x1={x1} y1={y1} x2={x2} y2={y2} stroke="#bbb" strokeWidth="1.5" />,
-          <line key={`d2-${r}-${c}`} x1={x2} y1={y1} x2={x1} y2={y2} stroke="#bbb" strokeWidth="1.5" />
-        )
-      }
+      diagonalLines.push(
+        <line key={`d1-${r}-${c}`} x1={x1} y1={y1} x2={x2} y2={y2} stroke="#bbb" strokeWidth="1.5" />,
+        <line key={`d2-${r}-${c}`} x1={x2} y1={y1} x2={x1} y2={y2} stroke="#bbb" strokeWidth="1.5" />
+      )
     }
   }
 
@@ -63,12 +61,12 @@ function GonuBoardSVG({
       style={{ display: 'block', margin: '0 auto', background: '#fdf6e3', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }}
     >
       {/* 격자 가로선 */}
-      {[0, 1, 2, 3].map(r => (
-        <line key={`h${r}`} x1={PAD} y1={PAD + r * CELL} x2={PAD + 3 * CELL} y2={PAD + r * CELL} stroke="#999" strokeWidth="2" />
+      {[0, 1, 2].map(r => (
+        <line key={`h${r}`} x1={PAD} y1={PAD + r * CELL} x2={PAD + 2 * CELL} y2={PAD + r * CELL} stroke="#999" strokeWidth="2" />
       ))}
       {/* 격자 세로선 */}
-      {[0, 1, 2, 3].map(c => (
-        <line key={`v${c}`} x1={PAD + c * CELL} y1={PAD} x2={PAD + c * CELL} y2={PAD + 3 * CELL} stroke="#999" strokeWidth="2" />
+      {[0, 1, 2].map(c => (
+        <line key={`v${c}`} x1={PAD + c * CELL} y1={PAD} x2={PAD + c * CELL} y2={PAD + 2 * CELL} stroke="#999" strokeWidth="2" />
       ))}
       {/* 대각선 */}
       {diagonalLines}
@@ -85,7 +83,7 @@ function GonuBoardSVG({
             <g key={`${r}-${c}`} onClick={() => !disabled && onCellClick({ row: r, col: c })} style={{ cursor: disabled ? 'default' : 'pointer' }}>
               {/* 이동 가능 위치: 초록 점선 원 */}
               {isTarget && (
-                <circle cx={cx} cy={cy} r={R + 4} fill="none" stroke="#4caf50" strokeWidth="2.5" strokeDasharray="5,3" />
+                <circle cx={cx} cy={cy} r={R + 6} fill="none" stroke="#4caf50" strokeWidth="2.5" strokeDasharray="5,3" />
               )}
               {/* 말 */}
               {cell !== 'empty' && (
@@ -96,14 +94,14 @@ function GonuBoardSVG({
                     stroke={isSelected ? '#ffeb3b' : 'white'}
                     strokeWidth={isSelected ? 4 : 2}
                   />
-                  <text x={cx} y={cy + 5} textAnchor="middle" fontSize="13" fill="white" fontWeight="bold" style={{ pointerEvents: 'none' }}>
+                  <text x={cx} y={cy + 5} textAnchor="middle" fontSize="14" fill="white" fontWeight="bold" style={{ pointerEvents: 'none' }}>
                     {cell === 'player' ? '나' : 'AI'}
                   </text>
                 </>
               )}
               {/* 빈 칸 교차점 */}
               {cell === 'empty' && !isTarget && (
-                <circle cx={cx} cy={cy} r={5} fill="#ccc" />
+                <circle cx={cx} cy={cy} r={6} fill="#ccc" />
               )}
             </g>
           )
@@ -113,71 +111,83 @@ function GonuBoardSVG({
   )
 }
 
-// ─── 게임 트리 시각화 ─────────────────────────────────────────────────────────
+// ─── 규칙 안내 화면 ───────────────────────────────────────────────────────────
 
-function TreeNodeView({ node, maxDepth }: { node: GameTreeNode; maxDepth: number }) {
-  if (node.depth < maxDepth - 2) return null
+function RulesScreen({ onStart }: { onStart: () => void }) {
+  return (
+    <div className="content-card" style={{ maxWidth: 620, margin: '0 auto' }}>
+      <h3>🎮 고누 게임 규칙 (줄고누 방식)</h3>
+      <ul style={{ lineHeight: 2, paddingLeft: '1.5rem', color: '#333' }}>
+        <li><strong>3×3 격자</strong> 위에서 진행하는 전략 보드 게임입니다.</li>
+        <li><strong>파란 말(나)</strong>은 하단 행, <strong>빨간 말(AI)</strong>은 상단 행에서 시작합니다.</li>
+        <li>말은 <strong>상하좌우 및 대각선</strong>으로 1칸 이동할 수 있습니다.</li>
+        <li>이동은 <strong>빈 칸으로만</strong> 가능합니다 (점프 없음).</li>
+        <li><strong>상대방이 이동할 수 없게 만들면 승리</strong>합니다.</li>
+        <li>AI는 <strong>미니맥스 알고리즘(depth=3)</strong>으로 최적의 수를 계산합니다.</li>
+      </ul>
+      <div style={{ marginTop: '1rem', padding: '1rem', background: '#e3f2fd', borderRadius: 8 }}>
+        <strong>초기 배치:</strong>
+        <div style={{ fontFamily: 'monospace', marginTop: '0.5rem', lineHeight: 1.8, color: '#333' }}>
+          [ AI,  AI,  AI  ] ← 0행 (상단)<br />
+          [ 빈,  빈,  빈  ] ← 1행 (중간)<br />
+          [ 나,  나,  나  ] ← 2행 (하단)
+        </div>
+      </div>
+      <div style={{ marginTop: '1rem', padding: '1rem', background: '#fff3e0', borderRadius: 8 }}>
+        <strong>미니맥스 전략:</strong> 상대가 이동 못하게 막는 것이 목표 → 미니맥스로 최적 수 계산
+      </div>
+      <div style={{ marginTop: '1rem', padding: '1rem', background: '#f3e5f5', borderRadius: 8 }}>
+        <strong>이동 방법:</strong> 자신의 말을 클릭하면 이동 가능한 위치가 초록 점선으로 표시됩니다. 해당 위치를 클릭하면 이동합니다.
+      </div>
+      <button className="complete-btn" style={{ marginTop: '1.5rem' }} onClick={onStart}>
+        게임 시작
+      </button>
+    </div>
+  )
+}
 
+// ─── 게임 트리 뷰 (재귀) ──────────────────────────────────────────────────────
+
+function GameTreeView({ node }: { node: GameTreeNode }) {
   const label = node.isMax ? 'MAX' : 'MIN'
   const color = node.isMax ? '#d32f2f' : '#1976d2'
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', margin: '0 4px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
       <div style={{
         border: `2px solid ${color}`,
         borderRadius: 8,
         padding: '4px 10px',
         background: 'white',
-        minWidth: 60,
+        minWidth: 64,
         textAlign: 'center',
-        fontSize: 13,
+        boxShadow: '0 1px 4px rgba(0,0,0,0.1)',
       }}>
         <div style={{ color, fontWeight: 'bold', fontSize: 11 }}>{label}</div>
-        <div style={{ fontWeight: 'bold', fontSize: 15 }}>{node.score}</div>
+        <div style={{ fontWeight: 'bold', fontSize: 16 }}>{node.score}</div>
         {node.move && (
           <div style={{ fontSize: 10, color: '#888' }}>
             ({node.move.from.row},{node.move.from.col})→({node.move.to.row},{node.move.to.col})
           </div>
         )}
       </div>
+
       {node.children.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'row', marginTop: 8, position: 'relative' }}>
-          {/* 연결선 */}
-          <svg
-            style={{ position: 'absolute', top: -8, left: 0, width: '100%', height: 8, overflow: 'visible', pointerEvents: 'none' }}
-          />
-          {node.children.slice(0, 4).map((child, i) => (
+        <div style={{ display: 'flex', flexDirection: 'row', gap: 4, marginTop: 4, alignItems: 'flex-start' }}>
+          {node.children.slice(0, 5).map((child, i) => (
             <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-              <div style={{ width: 2, height: 16, background: '#ccc' }} />
-              <TreeNodeView node={child} maxDepth={maxDepth} />
+              <div style={{ width: 2, height: 14, background: '#ccc' }} />
+              <GameTreeView node={child} />
             </div>
           ))}
+          {node.children.length > 5 && (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <div style={{ width: 2, height: 14, background: '#ccc' }} />
+              <div style={{ fontSize: 11, color: '#999', padding: '4px 6px' }}>+{node.children.length - 5}개</div>
+            </div>
+          )}
         </div>
       )}
-    </div>
-  )
-}
-
-// ─── 규칙 안내 화면 ───────────────────────────────────────────────────────────
-
-function RulesScreen({ onStart }: { onStart: () => void }) {
-  return (
-    <div className="content-card" style={{ maxWidth: 600, margin: '0 auto' }}>
-      <h3>🎮 고누 게임 규칙</h3>
-      <ul style={{ lineHeight: 2, paddingLeft: '1.5rem', color: '#333' }}>
-        <li>4×4 격자 위에서 진행하는 전략 보드 게임입니다.</li>
-        <li><strong>파란 말</strong>은 플레이어, <strong>빨간 말</strong>은 AI입니다.</li>
-        <li>말은 <strong>상하좌우 및 대각선</strong>으로 1칸 이동할 수 있습니다.</li>
-        <li>상대 말 너머 빈 칸이 있으면 <strong>점프하여 상대 말을 잡을 수 있습니다.</strong></li>
-        <li>상대방의 말을 <strong>모두 잡거나</strong>, 상대가 <strong>이동 불가</strong> 상태가 되면 승리합니다.</li>
-        <li>AI는 <strong>미니맥스 알고리즘</strong>으로 최적의 수를 계산합니다.</li>
-      </ul>
-      <div style={{ marginTop: '1.5rem', padding: '1rem', background: '#e3f2fd', borderRadius: 8 }}>
-        <strong>이동 방법:</strong> 자신의 말을 클릭하면 이동 가능한 위치가 초록 점선으로 표시됩니다. 해당 위치를 클릭하면 이동합니다.
-      </div>
-      <button className="complete-btn" style={{ marginTop: '1.5rem' }} onClick={onStart}>
-        게임 시작
-      </button>
     </div>
   )
 }
@@ -191,26 +201,16 @@ export default function MinimaxSection({ onComplete }: MinimaxSectionProps) {
   const [selected, setSelected] = useState<Position | null>(null)
   const [validMoves, setValidMoves] = useState<GonuMove[]>([])
   const [gameTree, setGameTree] = useState<GameTreeNode | null>(null)
-  const [winner, setWinner] = useState<'player' | 'ai' | 'draw' | null>(null)
+  const [winner, setWinner] = useState<'player' | 'ai' | null>(null)
   const [statusMsg, setStatusMsg] = useState('당신의 차례입니다. 말을 선택하세요.')
   const [aiThinking, setAiThinking] = useState(false)
 
   // 게임 종료 체크
-  const checkTerminal = useCallback((b: GonuBoard): 'player' | 'ai' | 'draw' | null => {
-    if (!isTerminal(b)) return null
-    let playerCount = 0, aiCount = 0
-    for (const row of b) for (const cell of row) {
-      if (cell === 'player') playerCount++
-      if (cell === 'ai') aiCount++
-    }
-    if (playerCount === 0) return 'ai'
-    if (aiCount === 0) return 'player'
-    // 이동 불가 체크
+  const checkTerminal = useCallback((b: GonuBoard): 'player' | 'ai' | null => {
     const pm = getValidMoves(b, 'player')
     const am = getValidMoves(b, 'ai')
-    if (pm.length === 0 && am.length === 0) return 'draw'
-    if (pm.length === 0) return 'ai'
-    if (am.length === 0) return 'player'
+    if (pm.length === 0) return 'ai'   // 플레이어 이동 불가 → AI 승
+    if (am.length === 0) return 'player' // AI 이동 불가 → 플레이어 승
     return null
   }, [])
 
@@ -219,13 +219,13 @@ export default function MinimaxSection({ onComplete }: MinimaxSectionProps) {
     setAiThinking(true)
     setStatusMsg('AI가 생각 중...')
     setTimeout(() => {
-      const result = minimax(b, 2, true, true)
+      const result = minimax(b, 3, true, true)
       if (result.tree) setGameTree(result.tree)
 
       if (!result.move) {
-        const w = checkTerminal(b)
-        setWinner(w ?? 'player')
+        setWinner('player')
         setPhase('ended')
+        setStatusMsg('플레이어가 이겼습니다!')
         setAiThinking(false)
         return
       }
@@ -305,17 +305,6 @@ export default function MinimaxSection({ onComplete }: MinimaxSectionProps) {
     setPhase('playing')
   }
 
-  // 말 개수 계산
-  const countPieces = (b: GonuBoard) => {
-    let p = 0, a = 0
-    for (const row of b) for (const cell of row) {
-      if (cell === 'player') p++
-      if (cell === 'ai') a++
-    }
-    return { player: p, ai: a }
-  }
-  const pieces = countPieces(board)
-
   if (phase === 'rules') {
     return (
       <div className="section">
@@ -332,30 +321,26 @@ export default function MinimaxSection({ onComplete }: MinimaxSectionProps) {
       <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', alignItems: 'flex-start' }}>
         {/* 좌측: 게임 보드 */}
         <div className="content-card" style={{ flex: '0 0 auto' }}>
-          <h3>고누 보드</h3>
+          <h3>고누 보드 (3×3)</h3>
 
           {/* 상태 메시지 */}
           <div style={{
             padding: '0.6rem 1rem',
             borderRadius: 6,
             marginBottom: '1rem',
-            background: phase === 'ended' ? (winner === 'player' ? '#e8f5e9' : winner === 'ai' ? '#ffebee' : '#fff3e0') : '#e3f2fd',
-            color: phase === 'ended' ? (winner === 'player' ? '#2e7d32' : winner === 'ai' ? '#c62828' : '#e65100') : '#1565c0',
+            background: phase === 'ended' ? (winner === 'player' ? '#e8f5e9' : '#ffebee') : '#e3f2fd',
+            color: phase === 'ended' ? (winner === 'player' ? '#2e7d32' : '#c62828') : '#1565c0',
             fontWeight: 'bold',
             fontSize: '1rem',
           }}>
             {phase === 'ended'
-              ? winner === 'player' ? '🎉 플레이어 승리!'
-              : winner === 'ai' ? '🤖 AI 승리!'
-              : '🤝 무승부!'
+              ? winner === 'player' ? '🎉 플레이어 승리! (AI가 이동 불가)'
+              : '🤖 AI 승리! (플레이어가 이동 불가)'
               : statusMsg}
           </div>
 
-          {/* 말 개수 */}
-          <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', fontSize: 14 }}>
-            <span style={{ color: '#1976d2', fontWeight: 'bold' }}>🔵 나: {pieces.player}개</span>
-            <span style={{ color: '#d32f2f', fontWeight: 'bold' }}>🔴 AI: {pieces.ai}개</span>
-            <span style={{ color: '#666' }}>차례: {turn === 'player' ? '플레이어' : 'AI'}</span>
+          <div style={{ marginBottom: '0.75rem', fontSize: 13, color: '#666' }}>
+            차례: <strong>{turn === 'player' ? '플레이어 (파란 말)' : 'AI (빨간 말)'}</strong>
           </div>
 
           <GonuBoardSVG
@@ -376,7 +361,7 @@ export default function MinimaxSection({ onComplete }: MinimaxSectionProps) {
 
         {/* 우측: 게임 트리 */}
         <div className="content-card" style={{ flex: '1 1 300px', minWidth: 280 }}>
-          <h3>게임 트리 (depth=2)</h3>
+          <h3>게임 트리 (depth=3)</h3>
           {gameTree ? (
             <div style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: 420 }}>
               <div style={{ display: 'flex', justifyContent: 'center', padding: '0.5rem' }}>
@@ -389,9 +374,9 @@ export default function MinimaxSection({ onComplete }: MinimaxSectionProps) {
             </div>
           )}
           <div style={{ marginTop: '1rem', fontSize: 12, color: '#666', lineHeight: 1.6 }}>
-            <strong>MAX</strong> = AI 차례 (점수 최대화)<br />
-            <strong>MIN</strong> = 플레이어 차례 (점수 최소화)<br />
-            숫자 = 보드 평가값 (AI말 수 − 플레이어 말 수)
+            <strong>MAX</strong> = AI 차례 (이동 가능 수 최대화)<br />
+            <strong>MIN</strong> = 플레이어 차례 (이동 가능 수 최소화)<br />
+            숫자 = AI 이동 가능 수 − 플레이어 이동 가능 수
           </div>
         </div>
       </div>
@@ -401,7 +386,8 @@ export default function MinimaxSection({ onComplete }: MinimaxSectionProps) {
         <h3>미니맥스 알고리즘 동작 원리</h3>
         <p>
           미니맥스(Minimax)는 두 플레이어 게임에서 최적의 수를 찾는 알고리즘입니다.
-          AI(MAX 플레이어)는 자신에게 유리한 수를 선택하고, 상대(MIN 플레이어)는 AI에게 불리한 수를 선택한다고 가정합니다.
+          고누에서는 <strong>상대가 이동 못하게 막는 것이 목표</strong>입니다.
+          AI(MAX)는 자신의 이동 가능 수를 최대화하고, 플레이어(MIN)는 AI의 이동 가능 수를 최소화한다고 가정합니다.
         </p>
         <p>
           모든 가능한 수를 트리 형태로 탐색하여, 리프 노드에서 보드를 평가한 뒤 그 값을 루트까지 전파합니다.
@@ -410,7 +396,7 @@ export default function MinimaxSection({ onComplete }: MinimaxSectionProps) {
         <div className="code-block" style={{ fontSize: 13 }}>
           <span className="code-line"><span className="keyword">function</span> <span className="function">minimax</span>(board, depth, isMaximizing) {'{'}</span>
           <span className="code-line">  <span className="keyword">if</span> (depth === 0 || isTerminal(board))</span>
-          <span className="code-line">    <span className="keyword">return</span> <span className="function">evaluateBoard</span>(board);</span>
+          <span className="code-line">    <span className="keyword">return</span> <span className="function">evaluateBoard</span>(board); <span className="comment">// AI이동수 - 플레이어이동수</span></span>
           <span className="code-line"></span>
           <span className="code-line">  <span className="keyword">if</span> (isMaximizing) {'{'}</span>
           <span className="code-line">    <span className="keyword">let</span> best = -Infinity;</span>
@@ -426,53 +412,6 @@ export default function MinimaxSection({ onComplete }: MinimaxSectionProps) {
           <span className="code-line">{'}'}</span>
         </div>
       </div>
-    </div>
-  )
-}
-
-// ─── 게임 트리 뷰 (재귀) ──────────────────────────────────────────────────────
-
-function GameTreeView({ node }: { node: GameTreeNode }) {
-  const label = node.isMax ? 'MAX' : 'MIN'
-  const color = node.isMax ? '#d32f2f' : '#1976d2'
-  const score = evaluateBoard(node.board)
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-      <div style={{
-        border: `2px solid ${color}`,
-        borderRadius: 8,
-        padding: '4px 10px',
-        background: 'white',
-        minWidth: 64,
-        textAlign: 'center',
-        boxShadow: '0 1px 4px rgba(0,0,0,0.1)',
-      }}>
-        <div style={{ color, fontWeight: 'bold', fontSize: 11 }}>{label}</div>
-        <div style={{ fontWeight: 'bold', fontSize: 16 }}>{node.score}</div>
-        {node.move && (
-          <div style={{ fontSize: 10, color: '#888' }}>
-            ({node.move.from.row},{node.move.from.col})→({node.move.to.row},{node.move.to.col})
-          </div>
-        )}
-      </div>
-
-      {node.children.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'row', gap: 4, marginTop: 4, alignItems: 'flex-start' }}>
-          {node.children.slice(0, 5).map((child, i) => (
-            <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-              <div style={{ width: 2, height: 14, background: '#ccc' }} />
-              <GameTreeView node={child} />
-            </div>
-          ))}
-          {node.children.length > 5 && (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-              <div style={{ width: 2, height: 14, background: '#ccc' }} />
-              <div style={{ fontSize: 11, color: '#999', padding: '4px 6px' }}>+{node.children.length - 5}개</div>
-            </div>
-          )}
-        </div>
-      )}
     </div>
   )
 }
