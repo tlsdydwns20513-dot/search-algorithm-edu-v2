@@ -45,7 +45,11 @@ export type PuzzleBoard = number[]  // 길이 9, 0=빈칸
 export const GOAL_STATE: PuzzleBoard = [1, 2, 3, 4, 5, 6, 7, 8, 0]
 
 // 한반도 도시
-export type CityId = 'busan' | 'daegu' | 'daejeon' | 'seoul' | 'pyongyang' | 'sinuiju' | 'wonsan' | 'hamheung'
+export type CityId =
+  | 'busan' | 'ulsan' | 'daegu' | 'pohang'
+  | 'daejeon' | 'gwangju' | 'jeonju'
+  | 'seoul' | 'incheon' | 'chuncheon'
+  | 'pyongyang' | 'sinuiju'
 
 export interface City {
   id: CityId
