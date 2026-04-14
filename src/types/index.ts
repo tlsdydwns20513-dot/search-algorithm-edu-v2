@@ -63,7 +63,7 @@ export interface CityEdge {
 
 // 고누 게임
 export type CellState = 'empty' | 'player' | 'ai'
-export type GonuBoard = CellState[][]  // 4×4
+export type GonuBoard = CellState[][]  // 3×3
 
 export interface Position {
   row: number
