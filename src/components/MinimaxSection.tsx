@@ -7,6 +7,7 @@ import {
   isTerminal,
   minimax,
   evaluateBoard,
+  generateRandomGonuBoard,
 } from '../algorithms/minimax'
 import { GonuBoard, GonuMove, Position, GameTreeNode } from '../types/index'
 
@@ -81,9 +82,12 @@ function GonuBoardSVG({
 
           return (
             <g key={`${r}-${c}`} onClick={() => !disabled && onCellClick({ row: r, col: c })} style={{ cursor: disabled ? 'default' : 'pointer' }}>
-              {/* 이동 가능 위치: 초록 점선 원 */}
+          {/* 이동 가능 위치 클릭 영역 (투명 큰 원) */}
               {isTarget && (
-                <circle cx={cx} cy={cy} r={R + 6} fill="none" stroke="#4caf50" strokeWidth="2.5" strokeDasharray="5,3" />
+                <>
+                  <circle cx={cx} cy={cy} r={R + 14} fill="transparent" />
+                  <circle cx={cx} cy={cy} r={R + 6} fill="none" stroke="#4caf50" strokeWidth="2.5" strokeDasharray="5,3" />
+                </>
               )}
               {/* 말 */}
               {cell !== 'empty' && (
@@ -99,9 +103,12 @@ function GonuBoardSVG({
                   </text>
                 </>
               )}
-              {/* 빈 칸 교차점 */}
+              {/* 빈 칸 교차점 - 클릭 영역 포함 */}
               {cell === 'empty' && !isTarget && (
-                <circle cx={cx} cy={cy} r={6} fill="#ccc" />
+                <>
+                  <circle cx={cx} cy={cy} r={R} fill="transparent" />
+                  <circle cx={cx} cy={cy} r={6} fill="#ccc" />
+                </>
               )}
             </g>
           )
@@ -290,7 +297,7 @@ export default function MinimaxSection({ onComplete }: MinimaxSectionProps) {
 
   // 초기화
   const handleReset = () => {
-    setBoard(INITIAL_GONU_BOARD)
+    setBoard(generateRandomGonuBoard())
     setTurn('player')
     setSelected(null)
     setValidMoves([])
@@ -302,6 +309,7 @@ export default function MinimaxSection({ onComplete }: MinimaxSectionProps) {
   }
 
   const handleStart = () => {
+    setBoard(generateRandomGonuBoard())
     setPhase('playing')
   }
 
