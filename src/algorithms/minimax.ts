@@ -1,25 +1,26 @@
 import { GonuBoard, GonuMove, Position, GameTreeNode, CellState } from '../types/index'
 
+/**
+ * 초기 보드 (3×3):
+ * 0행: AI, AI, AI
+ * 1행: 빈, 빈, 빈
+ * 2행: 플레이어, 플레이어, 플레이어
+ */
 export const INITIAL_GONU_BOARD: GonuBoard = [
-  ['ai',     'ai',     'ai',     'ai'    ],
-  ['ai',     'ai',     'ai',     'ai'    ],
-  ['player', 'player', 'player', 'player'],
-  ['player', 'player', 'player', 'player'],
+  ['ai',     'ai',     'ai'    ],
+  ['empty',  'empty',  'empty' ],
+  ['player', 'player', 'player'],
 ]
 
 /**
- * 보드 평가: AI 말 수 - 플레이어 말 수
- * 양수 = AI 유리, 음수 = 플레이어 유리
+ * 보드 평가: 플레이어 이동 가능 수 - AI 이동 가능 수
+ * 양수 = 플레이어 유리, 음수 = AI 유리
+ * (AI가 MAX이므로 AI 이동 가능 수 - 플레이어 이동 가능 수)
  */
 export function evaluateBoard(board: GonuBoard): number {
-  let score = 0
-  for (const row of board) {
-    for (const cell of row) {
-      if (cell === 'ai') score += 1
-      if (cell === 'player') score -= 1
-    }
-  }
-  return score
+  const aiMoves = getValidMoves(board, 'ai').length
+  const playerMoves = getValidMoves(board, 'player').length
+  return aiMoves - playerMoves
 }
 
 /**
@@ -30,28 +31,26 @@ function cloneBoard(board: GonuBoard): GonuBoard {
 }
 
 /**
- * 위치가 보드 범위 내인지 확인
+ * 위치가 보드 범위 내인지 확인 (3×3)
  */
 function inBounds(row: number, col: number): boolean {
-  return row >= 0 && row < 4 && col >= 0 && col < 4
+  return row >= 0 && row < 3 && col >= 0 && col < 3
 }
 
 /**
  * 특정 플레이어의 유효한 이동 목록 반환
  * 이동 규칙:
- * - 상하좌우 + 대각선 1칸 이동 (빈 칸으로)
- * - 상대 말을 뛰어넘어 잡기 (점프): 상대 말 너머 빈 칸으로 이동
+ * - 상하좌우 + 대각선 1칸 이동 (빈 칸으로만, 점프 없음)
  */
 export function getValidMoves(board: GonuBoard, player: 'player' | 'ai'): GonuMove[] {
-  const opponent: CellState = player === 'player' ? 'ai' : 'player'
   const moves: GonuMove[] = []
   const directions = [
     [-1, 0], [1, 0], [0, -1], [0, 1],   // 상하좌우
     [-1, -1], [-1, 1], [1, -1], [1, 1], // 대각선
   ]
 
-  for (let row = 0; row < 4; row++) {
-    for (let col = 0; col < 4; col++) {
+  for (let row = 0; row < 3; row++) {
+    for (let col = 0; col < 3; col++) {
       if (board[row][col] !== player) continue
 
       const from: Position = { row, col }
@@ -63,20 +62,7 @@ export function getValidMoves(board: GonuBoard, player: 'player' | 'ai'): GonuMo
         if (!inBounds(nr, nc)) continue
 
         if (board[nr][nc] === 'empty') {
-          // 1칸 이동
           moves.push({ from, to: { row: nr, col: nc }, player })
-        } else if (board[nr][nc] === opponent) {
-          // 점프: 상대 말 너머 빈 칸으로 이동
-          const jr = nr + dr
-          const jc = nc + dc
-          if (inBounds(jr, jc) && board[jr][jc] === 'empty') {
-            moves.push({
-              from,
-              to: { row: jr, col: jc },
-              player,
-              captures: { row: nr, col: nc },
-            })
-          }
         }
       }
     }
@@ -92,34 +78,20 @@ export function applyGonuMove(board: GonuBoard, move: GonuMove): GonuBoard {
   const newBoard = cloneBoard(board)
   newBoard[move.to.row][move.to.col] = newBoard[move.from.row][move.from.col]
   newBoard[move.from.row][move.from.col] = 'empty'
-  if (move.captures) {
-    newBoard[move.captures.row][move.captures.col] = 'empty'
-  }
   return newBoard
 }
 
 /**
- * 게임 종료 조건: 한쪽 플레이어의 말이 0개이거나 이동 불가
+ * 게임 종료 조건: 한쪽 플레이어가 이동 불가 상태
  */
 export function isTerminal(board: GonuBoard): boolean {
-  let playerCount = 0
-  let aiCount = 0
-  for (const row of board) {
-    for (const cell of row) {
-      if (cell === 'player') playerCount++
-      if (cell === 'ai') aiCount++
-    }
-  }
-  if (playerCount === 0 || aiCount === 0) return true
-
-  // 이동 가능한 수가 없는 경우도 종료
   const playerMoves = getValidMoves(board, 'player')
   const aiMoves = getValidMoves(board, 'ai')
   return playerMoves.length === 0 || aiMoves.length === 0
 }
 
 /**
- * 미니맥스 알고리즘
+ * 미니맥스 알고리즘 (depth=3)
  * @param board 현재 보드 상태
  * @param depth 탐색 깊이
  * @param isMaximizing true=AI 차례(최대화), false=플레이어 차례(최소화)
