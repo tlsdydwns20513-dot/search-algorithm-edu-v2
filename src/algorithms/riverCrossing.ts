@@ -15,10 +15,20 @@ export function isGoal(state: RiverCrossingState): boolean {
   return state.rightBank.length === 4  // 모든 객체가 우안
 }
 
-export function getNextStates(state: RiverCrossingState): { state: RiverCrossingState; action: string }[] {
-  const results: { state: RiverCrossingState; action: string }[] = []
+/**
+ * 위반 상태도 포함한 모든 다음 상태 반환
+ */
+function getAllNextStates(state: RiverCrossingState): { state: RiverCrossingState; action: string; isViolation: boolean }[] {
+  const results: { state: RiverCrossingState; action: string; isViolation: boolean }[] = []
   const fromBank = state.farmerSide === 'left' ? state.leftBank : state.rightBank
   const toSide = state.farmerSide === 'left' ? 'right' : 'left'
+
+  const entityNames: Record<Entity, string> = {
+    farmer: '농부',
+    fox: '여우',
+    chicken: '닭',
+    grain: '곡식',
+  }
 
   // 농부 혼자 이동
   const aloneState: RiverCrossingState = {
@@ -30,9 +40,7 @@ export function getNextStates(state: RiverCrossingState): { state: RiverCrossing
       : [...state.rightBank, 'farmer'],
     farmerSide: toSide,
   }
-  if (!isViolation(aloneState)) {
-    results.push({ state: aloneState, action: '농부 혼자 이동' })
-  }
+  results.push({ state: aloneState, action: '농부 혼자 이동', isViolation: isViolation(aloneState) })
 
   // 농부와 함께 이동 가능한 객체 (farmer 제외)
   const companions = fromBank.filter(e => e !== 'farmer')
@@ -49,18 +57,16 @@ export function getNextStates(state: RiverCrossingState): { state: RiverCrossing
       rightBank: newRightBank,
       farmerSide: toSide,
     }
-    if (!isViolation(nextState)) {
-      const entityNames: Record<Entity, string> = {
-        farmer: '농부',
-        fox: '여우',
-        chicken: '닭',
-        grain: '곡식',
-      }
-      results.push({ state: nextState, action: `농부 + ${entityNames[entity]} 이동` })
-    }
+    results.push({ state: nextState, action: `농부 + ${entityNames[entity]} 이동`, isViolation: isViolation(nextState) })
   }
 
   return results
+}
+
+export function getNextStates(state: RiverCrossingState): { state: RiverCrossingState; action: string }[] {
+  return getAllNextStates(state)
+    .filter(r => !r.isViolation)
+    .map(r => ({ state: r.state, action: r.action }))
 }
 
 const INITIAL_STATE: RiverCrossingState = {
@@ -74,11 +80,17 @@ function nextNodeId(): string {
   return `node-${nodeIdCounter++}`
 }
 
-export function computeDFSSteps(): SearchStep[] {
+/**
+ * 금지 상태를 포함한 전체 상태 공간 트리 계산 (최대 깊이 7)
+ * - 위반 상태: status='dead-end'
+ * - 사이클(이미 방문): status='visited', 자식 없음
+ * - 목표 상태: status='goal'
+ * - 일반 상태: status='unvisited'
+ */
+export function computeFullStateTree(): SearchTreeNode[] {
   nodeIdCounter = 0
-  const steps: SearchStep[] = []
-  const visited = new Set<string>()
   const allNodes = new Map<string, SearchTreeNode>()
+  const MAX_DEPTH = 7
 
   const rootId = nextNodeId()
   const rootNode: SearchTreeNode = {
@@ -86,11 +98,116 @@ export function computeDFSSteps(): SearchStep[] {
     state: INITIAL_STATE,
     parentId: null,
     children: [],
-    status: 'visiting',
+    status: 'unvisited',
     depth: 0,
     action: '시작',
   }
   allNodes.set(rootId, rootNode)
+
+  // BFS로 전체 트리 구성
+  type QueueEntry = { nodeId: string; state: RiverCrossingState; depth: number; visitedOnPath: Set<string> }
+  const queue: QueueEntry[] = [{
+    nodeId: rootId,
+    state: INITIAL_STATE,
+    depth: 0,
+    visitedOnPath: new Set([serializeState(INITIAL_STATE)]),
+  }]
+
+  while (queue.length > 0) {
+    const entry = queue.shift()!
+    const { nodeId, state, depth, visitedOnPath } = entry
+    const node = allNodes.get(nodeId)!
+
+    if (isGoal(state)) {
+      node.status = 'goal'
+      continue
+    }
+
+    if (depth >= MAX_DEPTH) continue
+
+    const nexts = getAllNextStates(state)
+
+    for (const { state: nextState, action, isViolation: violation } of nexts) {
+      const childId = nextNodeId()
+      const serialized = serializeState(nextState)
+
+      if (violation) {
+        // 위반 상태: dead-end로 표시, 자식 없음
+        const childNode: SearchTreeNode = {
+          id: childId,
+          state: nextState,
+          parentId: nodeId,
+          children: [],
+          status: 'dead-end',
+          depth: depth + 1,
+          action,
+        }
+        allNodes.set(childId, childNode)
+        node.children.push(childId)
+      } else if (visitedOnPath.has(serialized)) {
+        // 사이클: visited로 표시, 자식 없음
+        const childNode: SearchTreeNode = {
+          id: childId,
+          state: nextState,
+          parentId: nodeId,
+          children: [],
+          status: 'visited',
+          depth: depth + 1,
+          action,
+        }
+        allNodes.set(childId, childNode)
+        node.children.push(childId)
+      } else {
+        // 일반 상태
+        const childNode: SearchTreeNode = {
+          id: childId,
+          state: nextState,
+          parentId: nodeId,
+          children: [],
+          status: isGoal(nextState) ? 'goal' : 'unvisited',
+          depth: depth + 1,
+          action,
+        }
+        allNodes.set(childId, childNode)
+        node.children.push(childId)
+
+        if (!isGoal(nextState)) {
+          const newVisited = new Set(visitedOnPath)
+          newVisited.add(serialized)
+          queue.push({ nodeId: childId, state: nextState, depth: depth + 1, visitedOnPath: newVisited })
+        }
+      }
+    }
+  }
+
+  return Array.from(allNodes.values())
+}
+
+export function computeDFSSteps(): SearchStep[] {
+  nodeIdCounter = 0
+  const steps: SearchStep[] = []
+  const visited = new Set<string>()
+
+  // 전체 트리를 먼저 계산
+  const fullTree = computeFullStateTree()
+  // nodeIdCounter를 리셋하지 않고 계속 사용 (전체 트리 이후 ID 부여)
+  // DFS용 별도 노드 맵 구성
+  const allNodes = new Map<string, SearchTreeNode>()
+
+  // 전체 트리 노드를 allNodes에 복사 (상태는 unvisited로 초기화)
+  for (const node of fullTree) {
+    allNodes.set(node.id, {
+      ...node,
+      children: [...node.children],
+      status: node.status === 'dead-end' || node.status === 'visited' ? node.status : 'unvisited',
+    })
+  }
+
+  // 루트 노드 ID (첫 번째 노드)
+  const rootNode = fullTree.find(n => n.parentId === null)
+  if (!rootNode) return steps
+
+  const rootId = rootNode.id
 
   // DFS 스택: [nodeId, state, depth, parentId, action]
   type StackEntry = { nodeId: string; state: RiverCrossingState; depth: number; parentId: string | null; action: string }
@@ -139,25 +256,26 @@ export function computeDFSSteps(): SearchStep[] {
 
     snapshot(nodeId, 'visited', `상태 방문 완료, 자식 ${nexts.length}개 탐색 예정`)
 
-    // 스택에 역순으로 추가 (첫 번째 자식이 먼저 처리되도록)
-    for (let i = nexts.length - 1; i >= 0; i--) {
-      const { state: nextState, action } = nexts[i]
-      const nextSerialized = serializeState(nextState)
-      if (!visited.has(nextSerialized)) {
-        const childId = nextNodeId()
-        const childNode: SearchTreeNode = {
-          id: childId,
-          state: nextState,
+    // 전체 트리에서 이 노드의 자식 중 유효한(dead-end/visited 아닌) 것만 스택에 추가
+    const nodeInTree = allNodes.get(nodeId)!
+    const validChildIds = nodeInTree.children.filter(cid => {
+      const child = allNodes.get(cid)!
+      return child.status !== 'dead-end'
+    })
+
+    // 역순으로 스택에 추가 (첫 번째 자식이 먼저 처리되도록)
+    for (let i = validChildIds.length - 1; i >= 0; i--) {
+      const childId = validChildIds[i]
+      const childNode = allNodes.get(childId)!
+      const childSerialized = serializeState(childNode.state)
+      if (!visited.has(childSerialized)) {
+        stack.push({
+          nodeId: childId,
+          state: childNode.state,
+          depth: childNode.depth,
           parentId: nodeId,
-          children: [],
-          status: 'unvisited',
-          depth: depth + 1,
-          action,
-        }
-        allNodes.set(childId, childNode)
-        const parentNode = allNodes.get(nodeId)!
-        parentNode.children.push(childId)
-        stack.push({ nodeId: childId, state: nextState, depth: depth + 1, parentId: nodeId, action })
+          action: childNode.action,
+        })
       }
     }
   }
@@ -169,19 +287,24 @@ export function computeBFSSteps(): SearchStep[] {
   nodeIdCounter = 0
   const steps: SearchStep[] = []
   const visited = new Set<string>()
+
+  // 전체 트리를 먼저 계산
+  const fullTree = computeFullStateTree()
   const allNodes = new Map<string, SearchTreeNode>()
 
-  const rootId = nextNodeId()
-  const rootNode: SearchTreeNode = {
-    id: rootId,
-    state: INITIAL_STATE,
-    parentId: null,
-    children: [],
-    status: 'visiting',
-    depth: 0,
-    action: '시작',
+  // 전체 트리 노드를 allNodes에 복사 (상태는 unvisited로 초기화)
+  for (const node of fullTree) {
+    allNodes.set(node.id, {
+      ...node,
+      children: [...node.children],
+      status: node.status === 'dead-end' || node.status === 'visited' ? node.status : 'unvisited',
+    })
   }
-  allNodes.set(rootId, rootNode)
+
+  const rootNode = fullTree.find(n => n.parentId === null)
+  if (!rootNode) return steps
+
+  const rootId = rootNode.id
   visited.add(serializeState(INITIAL_STATE))
 
   type QueueEntry = { nodeId: string; state: RiverCrossingState; depth: number }
@@ -224,24 +347,15 @@ export function computeBFSSteps(): SearchStep[] {
 
     snapshot(nodeId, 'visited', `상태 방문 완료, 자식 ${nexts.length}개 큐에 추가`, currentQueue)
 
-    for (const { state: nextState, action } of nexts) {
-      const nextSerialized = serializeState(nextState)
-      if (!visited.has(nextSerialized)) {
-        visited.add(nextSerialized)
-        const childId = nextNodeId()
-        const childNode: SearchTreeNode = {
-          id: childId,
-          state: nextState,
-          parentId: nodeId,
-          children: [],
-          status: 'unvisited',
-          depth: depth + 1,
-          action,
-        }
-        allNodes.set(childId, childNode)
-        const parentNode = allNodes.get(nodeId)!
-        parentNode.children.push(childId)
-        queue.push({ nodeId: childId, state: nextState, depth: depth + 1 })
+    // 전체 트리에서 이 노드의 유효한 자식만 큐에 추가
+    const nodeInTree = allNodes.get(nodeId)!
+    for (const childId of nodeInTree.children) {
+      const childNode = allNodes.get(childId)!
+      if (childNode.status === 'dead-end' || childNode.status === 'visited') continue
+      const childSerialized = serializeState(childNode.state)
+      if (!visited.has(childSerialized)) {
+        visited.add(childSerialized)
+        queue.push({ nodeId: childId, state: childNode.state, depth: childNode.depth })
       }
     }
 
