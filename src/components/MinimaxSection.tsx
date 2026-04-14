@@ -3,11 +3,11 @@ import './Section.css'
 import {
   GONU_VARIANTS,
   GonuBoardDef,
-  GonuVariant,
   getValidMoves,
   applyGonuMove,
   isTerminal,
   minimax,
+  generateRandomGonuVariant,
 } from '../algorithms/minimax'
 import { GonuBoard, GonuMove, Position } from '../types/index'
 
@@ -67,9 +67,21 @@ function SelectScreen({ onSelect }: { onSelect: (def: GonuBoardDef) => void }) {
   return (
     <div className="content-card" style={{ maxWidth: 700, margin: '0 auto' }}>
       <h3>🎮 고누 판 선택</h3>
-      <p style={{ color: '#555', marginBottom: '1.5rem' }}>
-        플레이할 고누 판을 선택하세요. 각 판마다 연결 구조가 달라 전략이 달라집니다!
+      <p style={{ color: '#555', marginBottom: '1rem' }}>
+        플레이할 고누 판을 선택하거나, 랜덤으로 시작하세요!
       </p>
+      {/* 랜덤 시작 버튼 */}
+      <button
+        onClick={() => onSelect(GONU_VARIANTS[Math.floor(Math.random() * GONU_VARIANTS.length)])}
+        style={{
+          width: '100%', padding: '0.9rem', marginBottom: '1.25rem',
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          color: 'white', border: 'none', borderRadius: 10, fontSize: '1rem',
+          fontWeight: 'bold', cursor: 'pointer',
+        }}
+      >
+        🎲 랜덤으로 시작하기
+      </button>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: '1rem' }}>
         {GONU_VARIANTS.map(def => (
           <button
@@ -230,8 +242,11 @@ function GonuBoardSVG({
 
 export default function MinimaxSection({ onComplete }: MinimaxSectionProps) {
   const [phase, setPhase] = useState<GamePhase>('select')
-  const [currentDef, setCurrentDef] = useState<GonuBoardDef>(GONU_VARIANTS[0])
-  const [board, setBoard] = useState<GonuBoard>(GONU_VARIANTS[0].board)
+  const [currentDef, setCurrentDef] = useState<GonuBoardDef>(() => generateRandomGonuVariant())
+  const [board, setBoard] = useState<GonuBoard>(() => {
+    const def = generateRandomGonuVariant()
+    return def.board.map(row => [...row])
+  })
   const [turn, setTurn] = useState<Turn>('player')
   const [selected, setSelected] = useState<Position | null>(null)
   const [validMoves, setValidMoves] = useState<GonuMove[]>([])
@@ -325,7 +340,10 @@ export default function MinimaxSection({ onComplete }: MinimaxSectionProps) {
   }
 
   const handleReset = () => {
-    setBoard(currentDef.board.map(row => [...row]))
+    // 초기화 시 랜덤으로 다른 고누 판 선택
+    const newDef = generateRandomGonuVariant()
+    setCurrentDef(newDef)
+    setBoard(newDef.board.map(row => [...row]))
     setTurn('player'); setSelected(null); setValidMoves([])
     setMoveScores(new Map()); setBestMove(null); setSelectedPiecePos(null)
     setWinner(null); setPhase('playing')
