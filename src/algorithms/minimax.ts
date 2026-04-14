@@ -13,6 +13,22 @@ export const INITIAL_GONU_BOARD: GonuBoard = [
 ]
 
 /**
+ * 랜덤 고누 보드 생성
+ * 여러 가지 초기 배치 중 랜덤 선택 (양쪽 모두 이동 가능한 상태)
+ */
+export function generateRandomGonuBoard(): GonuBoard {
+  const validLayouts: GonuBoard[] = [
+    // 기본 배치
+    [['ai','ai','ai'],['empty','empty','empty'],['player','player','player']],
+    // 엇갈린 배치 1
+    [['empty','ai','empty'],['ai','empty','ai'],['player','player','player']],
+    // 엇갈린 배치 2
+    [['ai','ai','ai'],['player','empty','player'],['empty','player','empty']],
+  ]
+  return validLayouts[Math.floor(Math.random() * validLayouts.length)]
+}
+
+/**
  * 보드 평가: 플레이어 이동 가능 수 - AI 이동 가능 수
  * 양수 = 플레이어 유리, 음수 = AI 유리
  * (AI가 MAX이므로 AI 이동 가능 수 - 플레이어 이동 가능 수)
